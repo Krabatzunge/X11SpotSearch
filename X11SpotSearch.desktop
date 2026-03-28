@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=X11SpotSearch
+Comment=Spotlight-like application launcher for X11
+Exec=X11SpotSearch
+Icon=X11SpotSearch
+Categories=Utility;

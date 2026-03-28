@@ -1,2 +1,7 @@
 zig-out/
 .zig-cache/
+
+# AppImage packaging artifacts
+*.AppImage
+*.AppDir/
+appimagetool-*.AppImage

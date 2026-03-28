@@ -61,18 +61,16 @@ pub fn main() !void {
     var renderer = try Renderer.init(conn, screen, win, visual, constants.WIN_WIDTH, constants.SEARCH_BAR_HEIGHT);
     defer renderer.deinit();
 
+    var scanner = desktop.DesktopScanner.init(std.heap.page_allocator);
+    defer scanner.deinit();
+    try scanner.scan();
+    std.debug.print("Loaded {} desktop entries\n", .{scanner.entries.items.len});
+
     var search_buf: [256]u8 = undefined;
     var search_len: usize = 0;
 
-    const dummy_results = [_]Result{
-        .{ .name = "Firefox", .description = "Web Browser" },
-        .{ .name = "Files", .description = "File Manager" },
-        .{ .name = "Ghosty", .description = "Terminal Emulator" },
-        .{ .name = "Evolution", .description = "Email Client" },
-        .{ .name = "Discord", .description = "Messaging App" },
-    };
-
     var results_buf: [constants.MAX_RESULTS]Result = undefined;
+    var scored_buf: [constants.MAX_RESULTS]fuzzy_match.ScoredEntry = undefined;
     var results_count: usize = 0;
     var selected: usize = 0;
 
@@ -150,22 +148,19 @@ pub fn main() !void {
                     results_count = 0;
                     selected = 0;
                     if (search_len > 0) {
-                        for (dummy_results) |dr| {
-                            if (results_count >= constants.MAX_RESULTS) break;
-                            const search_lower = if (search_buf[0] >= 'A' and search_buf[0] <= 'Z')
-                                search_buf[0] + 32
-                            else
-                                search_buf[0];
-                            const name_lower = if (dr.name[0] >= 'A' and dr.name[0] <= 'Z')
-                                dr.name[0] + 32
-                            else
-                                dr.name[0];
+                        const scored = fuzzy_match.search(scanner.entries.items, search_buf[0..search_len], &scored_buf);
 
-                            if (search_lower == name_lower) {
-                                results_buf[results_count] = dr;
-                                results_count += 1;
-                            }
+                        for (scored, 0..) |s, idx| {
+                            results_buf[idx] = .{
+                                .name = s.entry.name,
+                                .description = if (s.entry.comment.len > 0)
+                                    s.entry.comment
+                                else
+                                    s.entry.exec,
+                                .selected = false,
+                            };
                         }
+                        results_count = scored.len;
                     }
                 }
 
