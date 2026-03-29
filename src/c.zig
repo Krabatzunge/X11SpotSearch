@@ -9,4 +9,5 @@ pub const c = @cImport({
     @cInclude("cairo/cairo-xcb.h");
     @cInclude("pango/pangocairo.h");
     @cInclude("string.h");
+    @cInclude("poll.h");
 });

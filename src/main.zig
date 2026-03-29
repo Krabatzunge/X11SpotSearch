@@ -7,8 +7,12 @@ const Result = @import("result.zig").Result;
 const desktop = @import("desktop.zig");
 const fuzzy_match = @import("fuzzy.zig");
 const launcher = @import("launcher.zig");
+const mode_config = @import("mode.zig");
+const deamon = @import("deamon.zig");
 
 pub fn main() !void {
+    const config = mode_config.Config.parse();
+
     var screen_num: c_int = 0;
     const conn = c.xcb_connect(null, &screen_num) orelse
         return error.XcbConnectionFailed;
@@ -26,6 +30,32 @@ pub fn main() !void {
     }
     const screen = iter.data;
 
+    switch (config.mode) {
+        .oneshot => try runLauncher(conn, screen),
+        .daemon => try runAsDaemon(config, conn, screen),
+    }
+}
+
+fn runAsDaemon(config: mode_config.Config, conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
+    try deamon.runDeamon(conn, screen.*.root, config.hotkey_mod, config.hotkey_keycode, spawnOneshot);
+}
+
+fn spawnOneshot() void {
+    const argv = [_:null]?[*:0]const u8{
+        "/proc/self/exe", //Linux points to own binary
+        null,
+    };
+
+    const pid = std.posix.fork() catch return;
+    if (pid == 0) {
+        switch (std.posix.execvpeZ("/proc/self/exe", &argv, @ptrCast(std.c.environ))) {
+            else => std.posix.exit(1),
+        }
+    }
+    _ = std.posix.waitpid(pid, 0);
+}
+
+fn runLauncher(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
     const x: i16 = @intCast(@divTrunc(@as(i32, screen.*.width_in_pixels) - constants.WIN_WIDTH, 2));
     const y: i16 = @intCast(@divTrunc(@as(i32, screen.*.height_in_pixels) - @as(i32, @intFromFloat(constants.SEARCH_BAR_HEIGHT)), 3));
 
@@ -114,7 +144,6 @@ pub fn main() !void {
                                 return;
                             }
                         }
-                        //TODO: do stuff
                     },
                     c.XKB_KEY_BackSpace => {
                         if (search_len > 0) {
