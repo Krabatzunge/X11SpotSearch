@@ -6,6 +6,7 @@ const constants = @import("constants.zig");
 const Result = @import("result.zig").Result;
 const desktop = @import("desktop.zig");
 const fuzzy_match = @import("fuzzy.zig");
+const launcher = @import("launcher.zig");
 
 pub fn main() !void {
     var screen_num: c_int = 0;
@@ -105,6 +106,13 @@ pub fn main() !void {
                         std.debug.print("Enter pressed - launch/do: \"{s}\"\n", .{search_buf[0..search_len]});
                         if (results_count > 0) {
                             std.debug.print("Launch: \"{s}\"\n", .{results_buf[selected].name});
+                            const scored = fuzzy_match.search(scanner.entries.items, search_buf[0..search_len], &scored_buf);
+                            if (selected < scored.len) {
+                                launcher.launch(scored[selected].entry) catch |err| {
+                                    std.debug.print("Launch failed: {}\n", .{err});
+                                };
+                                return;
+                            }
                         }
                         //TODO: do stuff
                     },
