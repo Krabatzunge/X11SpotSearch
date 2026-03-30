@@ -7,3 +7,4 @@
 - [ ] **Config file**: Colors, fonts, hotkey, max results from file
 - [ ] **Widgets**: Quick-weather, -math, etc.
 - [ ] **Specify search**: $name for only searching with names, $category for categories, etc.
+- [ ] **Add default icons**: Add default icons for applications, with defaults for categories and overall default

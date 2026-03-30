@@ -6,6 +6,7 @@ A Spotlight-like application launcher for X11 environments. It combines a fuzzy 
 
 - **Written in Zig**: Compiled natively for a minimal resource footprint.
 - **Fuzzy Search**: Find and launch applications using fuzzy matching across your system's desktop entries.
+- **Icon Support**: Application icons (PNG, SVG, XPM) are automatically loaded from your system themes and rendered alongside search results.
 - **X11 Native**: Interfaces directly with XCB rather than relying on large GUI toolkits like GTK or Qt.
 - **Daemon Mode**: Run a background process (`--deamon` or `-d`) that listens for a global hotkey (default: `Super + Space`) to spawn the launcher.
 - **Oneshot Mode**: Run the launcher directly to search and launch an application, exiting immediately after.
@@ -24,6 +25,7 @@ To build from source, you need **Zig** (version >= 0.15) and the following C dev
 - `libxkbcommon-x11-dev` / `xkbcommon-x11`
 - `libcairo2-dev` / `cairo`
 - `libpango1.0-dev` / `pangocairo`
+- `librsvg2-dev` / `librsvg`
 
 *(Note: Package names are based on Debian/Ubuntu and may vary on distributions like Arch or Fedora.)*
 

@@ -22,44 +22,44 @@ pub const IconCache = struct {
             "Adwaita", "breeze", "Papirus", "Papirus-Dark", "gnome", "elementary", "Humanity", "hicolor",
         };
 
-        //const categories = [_][]const u8{ "apps", "applications", "categories", "places", "devices", "actions" };
+        const categories = [_][]const u8{ "apps", "applications", "categories", "places", "devices", "actions" };
 
-        const size_str = try std.fmt.allocPrint(alloc, "{}", .{icon_size});
-        const size_dir = try std.fmt.allocPrint(alloc, "{0}x{0}", .{icon_size});
+        const sizes = [_][]const u8{ "48x48", "32x32", "64x64", "128x128", "256x256", "96x96", "72x72", "36x36", "24x24", "512x512", "scalable" };
 
-        var dir_iter = std.mem.splitScalar(u8, data_dirs, ':');
-        while (dir_iter.next()) |base| {
+        // For each base dir -> theme -> size -> category
+        var base_iter = std.mem.splitScalar(u8, data_dirs, ':');
+        while (base_iter.next()) |base| {
             if (base.len == 0) continue;
             for (themes) |theme| {
-                try dirs.append(alloc, try std.fmt.allocPrint(
-                    alloc,
-                    "{s}/icons/{s}/{s}/apps",
-                    .{ base, theme, size_dir },
-                ));
-                try dirs.append(alloc, try std.fmt.allocPrint(
-                    alloc,
-                    "{s}/icons/{s}/scalable/apps",
-                    .{ base, theme },
-                ));
+                for (sizes) |size| {
+                    for (categories) |cat| {
+                        try dirs.append(alloc, try std.fmt.allocPrint(alloc, "{s}/icons/{s}/{s}/{s}", .{ base, theme, size, cat }));
+                    }
+                }
             }
         }
 
+        // ~/.local/share/icons and ~/.icons
         for (themes) |theme| {
-            try dirs.append(alloc, try std.fmt.allocPrint(
-                alloc,
-                "{s}/.local/share/icons/{s}/{s}/apps",
-                .{ home, theme, size_dir },
-            ));
-            try dirs.append(alloc, try std.fmt.allocPrint(
-                alloc,
-                "{s}/.icons/{s}/{s}/apps",
-                .{ home, theme, size_dir },
-            ));
+            for (sizes) |size| {
+                for (categories) |cat| {
+                    try dirs.append(alloc, try std.fmt.allocPrint(alloc, "{s}/.local/share/icons/{s}/{s}/{s}", .{ home, theme, size, cat }));
+                    try dirs.append(alloc, try std.fmt.allocPrint(alloc, "{s}/.icons/{s}/{s}/{s}", .{ home, theme, size, cat }));
+                }
+            }
         }
 
-        try dirs.append(alloc, try alloc.dupe(u8, "/usr/share/pixmaps"));
+        // Flatpak icons
+        try dirs.append(alloc, try std.fmt.allocPrint(alloc, "{s}/.local/share/flatpak/exports/share/icons/hicolor/128x128/apps", .{home}));
+        try dirs.append(alloc, try alloc.dupe(u8, "/var/lib/flatpak/exports/share/icons/hicolor/128x128/apps"));
+        try dirs.append(alloc, try alloc.dupe(u8, "/var/lib/flatpak/exports/share/icons/hicolor/scalable/apps"));
 
-        _ = size_str;
+        // Custom icon paths (JetBrains)
+        try dirs.append(alloc, try std.fmt.allocPrint(alloc, "{s}/.local/share/JetBrains/Toolbox/apps", .{home}));
+
+        // Pixmaps
+        try dirs.append(alloc, try alloc.dupe(u8, "/usr/share/pixmaps"));
+        try dirs.append(alloc, try alloc.dupe(u8, "/usr/local/share/pixmaps"));
 
         return .{
             .map = std.StringHashMap(*c.cairo_surface_t).init(allocator),
@@ -84,10 +84,13 @@ pub const IconCache = struct {
         if (self.map.get(icon_name)) |surface| return surface;
 
         if (icon_name[0] == '/') {
+            std.debug.print("Searching abosulte icon: {s}\n", .{icon_name});
             if (self.loadIcon(icon_name)) |surface| {
+                std.debug.print("Loaded absolute icon: {s}\n", .{icon_name});
                 self.map.put(icon_name, surface) catch {};
                 return surface;
             }
+            std.debug.print("Failed to load absolute icon: {s}\n", .{icon_name});
             return null;
         }
 
@@ -105,18 +108,32 @@ pub const IconCache = struct {
             }
         }
 
+        // some .desktop files may have an extension
+        if (std.mem.indexOfScalar(u8, icon_name, '.') != null) {
+            for (self.search_dirs) |dir| {
+                const path = std.fmt.allocPrintSentinel(alloc, "{s}/{s}", .{ dir, icon_name }, 0) catch continue;
+
+                if (self.loadIcon(path)) |surface| {
+                    self.map.put(icon_name, surface) catch {};
+                    return surface;
+                }
+            }
+        }
+
         return null;
     }
 
     fn loadIcon(self: *IconCache, path: []const u8) ?*c.cairo_surface_t {
         std.fs.cwd().access(path, .{}) catch return null;
 
-        const path_z: [*c]const u8 = @ptrCast(path.ptr);
+        const alloc = self.arena.allocator();
+        const path_z = alloc.dupeZ(u8, path) catch return null;
 
         if (std.mem.endsWith(u8, path, ".svg")) {
-            return self.loadSvg(path_z);
+            return self.loadSvg(path_z.ptr);
         } else if (std.mem.endsWith(u8, path, ".png")) {
-            return self.loadPng(path_z);
+            std.debug.print("Loading png with page: {s}\n", .{path});
+            return self.loadPng(path_z.ptr);
         }
 
         return null;
@@ -124,8 +141,10 @@ pub const IconCache = struct {
 
     fn loadPng(self: *IconCache, path: [*c]const u8) ?*c.cairo_surface_t {
         const img = c.cairo_image_surface_create_from_png(path);
+        std.debug.print("Creating cairo_surface for path\n", .{});
         if (c.cairo_surface_status(img) != c.CAIRO_STATUS_SUCCESS) {
             c.cairo_surface_destroy(img);
+            std.debug.print("Failed to create cairo_surface for path\n", .{});
             return null;
         }
 
@@ -145,6 +164,7 @@ pub const IconCache = struct {
         const sy = target / @as(f64, @floatFromInt(img_h));
         c.cairo_scale(cr, sx, sy);
         c.cairo_set_source_surface(cr, img, 0, 0);
+        c.cairo_pattern_set_filter(c.cairo_get_source(cr), c.CAIRO_FILTER_BILINEAR);
         c.cairo_paint(cr);
 
         c.cairo_surface_destroy(img);
