@@ -11,4 +11,5 @@ pub const c = @cImport({
     @cInclude("string.h");
     @cInclude("poll.h");
     @cInclude("librsvg/rsvg.h");
+    @cInclude("sys/timerfd.h");
 });

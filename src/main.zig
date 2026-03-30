@@ -111,114 +111,148 @@ fn runLauncher(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
 
     std.debug.print("Launcher window shown at ({}, {}), size {}x{}\n", .{ x, y, constants.WIN_WIDTH, constants.SEARCH_BAR_HEIGHT });
 
-    renderer.draw(search_buf[0..search_len], results_buf[0..0], &icons);
+    renderer.draw(search_buf[0..search_len], results_buf[0..0], &icons, true);
+
+    const xcb_fd = c.xcb_get_file_descriptor(conn);
+    const timer_fd = c.timerfd_create(c.CLOCK_MONOTONIC, c.TFD_CLOEXEC);
+    defer std.posix.close(timer_fd);
+
+    // Arm for cursor blink
+    armTimer(timer_fd, constants.CURSOR_BLINK_MS, constants.CURSOR_BLINK_MS);
+
+    var fds = [_]c.struct_pollfd{
+        .{ .fd = xcb_fd, .events = c.POLLIN, .revents = 0 },
+        .{ .fd = timer_fd, .events = c.POLLIN, .revents = 0 },
+    };
+
+    var cursor_visible = true;
+    var needs_redraw = false;
 
     while (true) {
-        const event = c.xcb_wait_for_event(conn) orelse break;
-        defer std.c.free(event);
+        _ = c.poll(&fds, 2, -1);
 
-        const event_type: u8 = @intCast(event.*.response_type & ~@as(u8, 0x80));
+        if (fds[1].revents & c.POLLIN != 0) {
+            var expirations: u64 = 0;
+            _ = std.posix.read(timer_fd, std.mem.asBytes(&expirations)) catch continue;
+            cursor_visible = !cursor_visible;
+            needs_redraw = true;
+        }
 
-        switch (event_type) {
-            c.XCB_EXPOSE => {
-                std.debug.print("Expose event - ready for drawing\n", .{});
-                renderer.draw(search_buf[0..search_len], results_buf[0..results_count], &icons);
-                _ = c.xcb_flush(conn);
-            },
-            c.XCB_KEY_PRESS => {
-                const key_event: *c.xcb_key_press_event_t = @ptrCast(event);
-                //std.debug.print("Key press: keycode={}.\n", .{key_event.detail});
-                const result = xkb.processKeyEvent(key_event.detail);
-                var search_changed = false;
+        if (fds[0].revents & c.POLLIN != 0) {
+            while (c.xcb_poll_for_event(conn)) |event| {
+                defer std.c.free(event);
 
-                switch (result.keysym) {
-                    c.XKB_KEY_Escape => {
-                        std.debug.print("Escape pressed, exiting.\n", .{});
+                const event_type: u8 = @intCast(event.*.response_type & ~@as(u8, 0x80));
+
+                switch (event_type) {
+                    c.XCB_EXPOSE => {
+                        std.debug.print("Expose event - ready for drawing\n", .{});
+                        needs_redraw = true;
+                    },
+                    c.XCB_KEY_PRESS => {
+                        const key_event: *c.xcb_key_press_event_t = @ptrCast(event);
+                        //std.debug.print("Key press: keycode={}.\n", .{key_event.detail});
+                        const result = xkb.processKeyEvent(key_event.detail);
+                        var search_changed = false;
+
+                        switch (result.keysym) {
+                            c.XKB_KEY_Escape => {
+                                std.debug.print("Escape pressed, exiting.\n", .{});
+                                return;
+                            },
+                            c.XKB_KEY_Return, c.XKB_KEY_KP_Enter => {
+                                std.debug.print("Enter pressed - launch/do: \"{s}\"\n", .{search_buf[0..search_len]});
+                                if (results_count > 0) {
+                                    std.debug.print("Launch: \"{s}\"\n", .{results_buf[selected].name});
+                                    const scored = fuzzy_match.search(scanner.entries.items, search_buf[0..search_len], &scored_buf);
+                                    if (selected < scored.len) {
+                                        launcher.launch(scored[selected].entry) catch |err| {
+                                            std.debug.print("Launch failed: {}\n", .{err});
+                                        };
+                                        return;
+                                    }
+                                }
+                            },
+                            c.XKB_KEY_BackSpace => {
+                                if (search_len > 0) {
+                                    search_len -= 1;
+                                    while (search_len > 0 and (search_buf[search_len] & 0xC0) == 0x80) {
+                                        search_len -= 1;
+                                    }
+                                    search_changed = true;
+                                    std.debug.print("Search: \"{s}\"\n", .{search_buf[0..search_len]});
+                                }
+                            },
+                            c.XKB_KEY_Up => {
+                                if (selected > 0) {
+                                    selected -= 1;
+                                }
+                                std.debug.print("Going up in searches, new selected: {}\n", .{selected});
+                            },
+                            c.XKB_KEY_Down => {
+                                if (results_count > 0 and selected < results_count - 1) {
+                                    selected += 1;
+                                }
+                                std.debug.print("Going down in searches, new selected: {}\n", .{selected});
+                            },
+                            else => {
+                                if (result.text) |txt| {
+                                    if (search_len + txt.len < search_buf.len) {
+                                        @memcpy(search_buf[search_len .. search_len + txt.len], txt);
+                                        search_len += txt.len;
+                                        search_changed = true;
+                                        std.debug.print("Search: \"{s}\"\n", .{search_buf[0..search_len]});
+                                    }
+                                }
+                            },
+                        }
+
+                        xkb.updateState(conn);
+
+                        if (search_changed) {
+                            cursor_visible = true;
+                            armTimer(timer_fd, constants.CURSOR_BLINK_MS, constants.CURSOR_BLINK_MS);
+
+                            results_count = 0;
+                            selected = 0;
+                            if (search_len > 0) {
+                                const scored = fuzzy_match.search(scanner.entries.items, search_buf[0..search_len], &scored_buf);
+
+                                for (scored, 0..) |s, idx| {
+                                    results_buf[idx] = .{
+                                        .name = s.entry.name,
+                                        .description = if (s.entry.comment.len > 0)
+                                            s.entry.comment
+                                        else
+                                            s.entry.exec,
+                                        .icon_name = s.entry.icon,
+                                        .selected = false,
+                                    };
+                                }
+                                results_count = scored.len;
+                            }
+                        }
+
+                        for (results_buf[0..results_count], 0..) |*r, j| {
+                            r.selected = (j == selected);
+                        }
+
+                        renderer.resizeWindow(conn, win, results_count);
+                        needs_redraw = true;
+                    },
+                    c.XCB_FOCUS_OUT => {
+                        std.debug.print("Focus lost, exiting.\n", .{});
                         return;
                     },
-                    c.XKB_KEY_Return, c.XKB_KEY_KP_Enter => {
-                        std.debug.print("Enter pressed - launch/do: \"{s}\"\n", .{search_buf[0..search_len]});
-                        if (results_count > 0) {
-                            std.debug.print("Launch: \"{s}\"\n", .{results_buf[selected].name});
-                            const scored = fuzzy_match.search(scanner.entries.items, search_buf[0..search_len], &scored_buf);
-                            if (selected < scored.len) {
-                                launcher.launch(scored[selected].entry) catch |err| {
-                                    std.debug.print("Launch failed: {}\n", .{err});
-                                };
-                                return;
-                            }
-                        }
-                    },
-                    c.XKB_KEY_BackSpace => {
-                        if (search_len > 0) {
-                            search_len -= 1;
-                            while (search_len > 0 and (search_buf[search_len] & 0xC0) == 0x80) {
-                                search_len -= 1;
-                            }
-                            search_changed = true;
-                            std.debug.print("Search: \"{s}\"\n", .{search_buf[0..search_len]});
-                        }
-                    },
-                    c.XKB_KEY_Up => {
-                        if (selected > 0) {
-                            selected -= 1;
-                        }
-                        std.debug.print("Going up in searches, new selected: {}\n", .{selected});
-                    },
-                    c.XKB_KEY_Down => {
-                        if (results_count > 0 and selected < results_count - 1) {
-                            selected += 1;
-                        }
-                        std.debug.print("Going down in searches, new selected: {}\n", .{selected});
-                    },
-                    else => {
-                        if (result.text) |txt| {
-                            if (search_len + txt.len < search_buf.len) {
-                                @memcpy(search_buf[search_len .. search_len + txt.len], txt);
-                                search_len += txt.len;
-                                search_changed = true;
-                                std.debug.print("Search: \"{s}\"\n", .{search_buf[0..search_len]});
-                            }
-                        }
-                    },
+                    else => {},
                 }
+            }
+        }
 
-                xkb.updateState(conn);
-
-                if (search_changed) {
-                    results_count = 0;
-                    selected = 0;
-                    if (search_len > 0) {
-                        const scored = fuzzy_match.search(scanner.entries.items, search_buf[0..search_len], &scored_buf);
-
-                        for (scored, 0..) |s, idx| {
-                            results_buf[idx] = .{
-                                .name = s.entry.name,
-                                .description = if (s.entry.comment.len > 0)
-                                    s.entry.comment
-                                else
-                                    s.entry.exec,
-                                .icon_name = s.entry.icon,
-                                .selected = false,
-                            };
-                        }
-                        results_count = scored.len;
-                    }
-                }
-
-                for (results_buf[0..results_count], 0..) |*r, j| {
-                    r.selected = (j == selected);
-                }
-
-                renderer.resizeWindow(conn, win, results_count);
-                renderer.draw(search_buf[0..search_len], results_buf[0..results_count], &icons);
-                _ = c.xcb_flush(conn);
-            },
-            c.XCB_FOCUS_OUT => {
-                std.debug.print("Focus lost, exiting.\n", .{});
-                return;
-            },
-            else => {},
+        if (needs_redraw) {
+            renderer.draw(search_buf[0..search_len], results_buf[0..results_count], &icons, cursor_visible);
+            _ = c.xcb_flush(conn);
+            needs_redraw = false;
         }
     }
 }
@@ -303,4 +337,19 @@ fn findVisual(screen: *c.xcb_screen_t) ?*c.xcb_visualtype_t {
         c.xcb_depth_next(&depth_iter);
     }
     return null;
+}
+
+fn armTimer(timer_fd: c_int, initial_ms: u32, repeat_ms: u32) void {
+    const ms_to_ns = 1_000_000;
+    const its = c.struct_itimerspec{
+        .it_value = .{
+            .tv_sec = 0,
+            .tv_nsec = @as(c_long, initial_ms) * ms_to_ns,
+        },
+        .it_interval = .{
+            .tv_sec = 0,
+            .tv_nsec = @as(c_long, repeat_ms) * ms_to_ns,
+        },
+    };
+    _ = c.timerfd_settime(timer_fd, 0, &its, null);
 }

@@ -5,3 +5,5 @@ pub const RESULT_ITEM_HEIGHT: f64 = 56.0;
 pub const MAX_RESULTS: usize = 5;
 
 pub const ICON_SIZE: u16 = 32;
+
+pub const CURSOR_BLINK_MS: u32 = 500;

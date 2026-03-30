@@ -51,7 +51,7 @@ pub const Renderer = struct {
         c.cairo_surface_destroy(self.surface);
     }
 
-    pub fn draw(self: *Renderer, search_text: []const u8, results: []const Result, icons: *icon_mod.IconCache) void {
+    pub fn draw(self: *Renderer, search_text: []const u8, results: []const Result, icons: *icon_mod.IconCache, cursor_visible: bool) void {
         const cr = self.cr;
         const width = self.width;
 
@@ -98,12 +98,15 @@ pub const Renderer = struct {
 
             if (search_text.len == 0)
                 text_w = -2;
-            c.cairo_set_source_rgb(cr, fg_r, fg_g, fg_b);
-            const cursor_x = text_x + @as(f64, @floatFromInt(text_w)) + 2.0;
-            const cursor_y = bar_y + 10.0;
-            const cursor_h = bar_h - 20.0;
-            c.cairo_rectangle(cr, cursor_x, cursor_y, 2.0, cursor_h);
-            c.cairo_fill(cr);
+
+            if (cursor_visible) {
+                c.cairo_set_source_rgb(cr, fg_r, fg_g, fg_b);
+                const cursor_x = text_x + @as(f64, @floatFromInt(text_w)) + 2.0;
+                const cursor_y = bar_y + 10.0;
+                const cursor_h = bar_h - 20.0;
+                c.cairo_rectangle(cr, cursor_x, cursor_y, 2.0, cursor_h);
+                c.cairo_fill(cr);
+            }
         }
 
         // Result list
