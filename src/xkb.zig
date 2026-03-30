@@ -45,6 +45,21 @@ pub const Xkb = struct {
         c.xkb_context_unref(self.ctx);
     }
 
+    pub fn getKeycodeForKeysym(self: *Xkb, target_keysym: c.xkb_keysym_t) ?u8 {
+        const min_keycode = c.xkb_keymap_min_keycode(self.keymap);
+        const max_keycode = c.xkb_keymap_max_keycode(self.keymap);
+
+        var keycode: c.xkb_keycode_t = min_keycode;
+        while (keycode <= max_keycode) : (keycode += 1) {
+            const sym = c.xkb_state_key_get_one_sym(self.state, keycode);
+            if (sym == target_keysym) {
+                if (keycode > 255) continue; // X11 core keycodes are 8-bit
+                return @intCast(keycode);
+            }
+        }
+        return null;
+    }
+
     pub const KeyResult = struct {
         keysym: c.xkb_keysym_t,
         text: ?[]const u8, // UTF-8 slice, null if not printable

@@ -51,7 +51,6 @@ pub const DesktopScanner = struct {
 
     pub fn scan(self: *DesktopScanner) !void {
         const alloc = self.arena.allocator();
-
         var dirs: std.ArrayList([]const u8) = .empty;
 
         // $XDG_DATA_HOME/applications (default: ~/.local/share/applications)
@@ -71,6 +70,15 @@ pub const DesktopScanner = struct {
             const path = try std.fmt.allocPrint(alloc, "{s}/applications", .{dir});
             try dirs.append(alloc, path);
         }
+
+        // Flatpak paths
+        if (std.posix.getenv("HOME")) |home| {
+            try dirs.append(alloc, try std.fmt.allocPrint(alloc, "{s}/.local/share/flatpak/exports/share/applications", .{home}));
+        }
+        try dirs.append(alloc, try alloc.dupe(u8, "/var/lib/flatpak/exports/share/applications"));
+
+        // Snap paths
+        try dirs.append(alloc, try alloc.dupe(u8, "/var/lib/snapd/desktop/applications"));
 
         for (dirs.items) |dir_path| {
             self.scanDir(dir_path) catch continue;
@@ -135,21 +143,27 @@ pub const DesktopScanner = struct {
         while (line_iter.next()) |raw_line| {
             const line = std.mem.trimEnd(u8, raw_line, &.{ '\r', ' ', '\t' });
 
-            if (line.len > 0 and line[0] == '[') {
-                in_desktop_entry = std.mem.eql(u8, line, "[Desktop Entry]");
+            if (line.len == 0 or line[0] == '#') continue;
+
+            if (line[0] == '[') {
+                const trimmed = std.mem.trim(u8, line, &.{ ' ', '\t' });
+                in_desktop_entry = std.mem.eql(u8, trimmed, "[Desktop Entry]");
                 continue;
             }
 
             if (!in_desktop_entry) continue;
-            if (line.len == 0 or line[0] == '#') continue;
 
             // Parse key=value
             if (std.mem.indexOfScalar(u8, line, '=')) |eq| {
                 const key = std.mem.trimEnd(u8, line[0..eq], &.{ ' ', '\t' });
                 const value = std.mem.trimStart(u8, line[eq + 1 ..], &.{ ' ', '\t' });
 
-                if (std.mem.eql(u8, key, "Name") and entry.name.len == 0) {
-                    entry.name = alloc.dupe(u8, value) catch return null;
+                if (std.mem.eql(u8, key, "Name")) {
+                    if (entry.name.len == 0)
+                        entry.name = alloc.dupe(u8, value) catch return null;
+                } else if (std.mem.eql(u8, key, "GenericName")) {
+                    if (entry.comment.len == 0)
+                        entry.comment = alloc.dupe(u8, value) catch return null;
                 } else if (std.mem.eql(u8, key, "Exec")) {
                     entry.exec = alloc.dupe(u8, value) catch return null;
                 } else if (std.mem.eql(u8, key, "Icon")) {

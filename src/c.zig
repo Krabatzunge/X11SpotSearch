@@ -10,4 +10,5 @@ pub const c = @cImport({
     @cInclude("pango/pangocairo.h");
     @cInclude("string.h");
     @cInclude("poll.h");
+    @cInclude("librsvg/rsvg.h");
 });

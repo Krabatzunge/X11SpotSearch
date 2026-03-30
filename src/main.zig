@@ -9,6 +9,7 @@ const fuzzy_match = @import("fuzzy.zig");
 const launcher = @import("launcher.zig");
 const mode_config = @import("mode.zig");
 const deamon = @import("deamon.zig");
+const icon_mod = @import("icon.zig");
 
 pub fn main() !void {
     const config = mode_config.Config.parse();
@@ -37,7 +38,7 @@ pub fn main() !void {
 }
 
 fn runAsDaemon(config: mode_config.Config, conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
-    try deamon.runDeamon(conn, screen.*.root, config.hotkey_mod, config.hotkey_keycode, spawnOneshot);
+    try deamon.runDeamon(conn, screen.*.root, config.hotkey_mod, config.hotkey_keysym, spawnOneshot);
 }
 
 fn spawnOneshot() void {
@@ -97,6 +98,9 @@ fn runLauncher(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
     try scanner.scan();
     std.debug.print("Loaded {} desktop entries\n", .{scanner.entries.items.len});
 
+    var icons = try icon_mod.IconCache.init(std.heap.page_allocator, constants.ICON_SIZE);
+    defer icons.deinit();
+
     var search_buf: [256]u8 = undefined;
     var search_len: usize = 0;
 
@@ -107,7 +111,7 @@ fn runLauncher(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
 
     std.debug.print("Launcher window shown at ({}, {}), size {}x{}\n", .{ x, y, constants.WIN_WIDTH, constants.SEARCH_BAR_HEIGHT });
 
-    renderer.draw(search_buf[0..search_len], results_buf[0..0]);
+    renderer.draw(search_buf[0..search_len], results_buf[0..0], &icons);
 
     while (true) {
         const event = c.xcb_wait_for_event(conn) orelse break;
@@ -118,7 +122,7 @@ fn runLauncher(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
         switch (event_type) {
             c.XCB_EXPOSE => {
                 std.debug.print("Expose event - ready for drawing\n", .{});
-                renderer.draw(search_buf[0..search_len], results_buf[0..results_count]);
+                renderer.draw(search_buf[0..search_len], results_buf[0..results_count], &icons);
                 _ = c.xcb_flush(conn);
             },
             c.XCB_KEY_PRESS => {
@@ -194,6 +198,7 @@ fn runLauncher(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
                                     s.entry.comment
                                 else
                                     s.entry.exec,
+                                .icon_name = s.entry.icon,
                                 .selected = false,
                             };
                         }
@@ -206,7 +211,7 @@ fn runLauncher(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
                 }
 
                 renderer.resizeWindow(conn, win, results_count);
-                renderer.draw(search_buf[0..search_len], results_buf[0..results_count]);
+                renderer.draw(search_buf[0..search_len], results_buf[0..results_count], &icons);
                 _ = c.xcb_flush(conn);
             },
             c.XCB_FOCUS_OUT => {

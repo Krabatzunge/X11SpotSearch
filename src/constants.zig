@@ -3,3 +3,5 @@ pub const WIN_WIDTH: u16 = 600;
 pub const SEARCH_BAR_HEIGHT: f64 = 60.0;
 pub const RESULT_ITEM_HEIGHT: f64 = 56.0;
 pub const MAX_RESULTS: usize = 5;
+
+pub const ICON_SIZE: u16 = 32;

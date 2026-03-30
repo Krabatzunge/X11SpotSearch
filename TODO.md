@@ -1,0 +1,9 @@
+- [ ] **Cursor blinking**: timerfd + poll() alongside XCB fd
+- [ ] **Smooth resize animation**: frame timer for animated height changes
+- [ ] **Scrolling**: Arrow keys past max_results scrolls the full list
+- [ ] **Clipboard / text selection**: Ctrl + A/C/V via XCB selections
+- [ ] **Multi-monitor**: xcb-randr to center on active output
+- [ ] **Wayland support**: wlr-layer-shell
+- [ ] **Config file**: Colors, fonts, hotkey, max results from file
+- [ ] **Widgets**: Quick-weather, -math, etc.
+- [ ] **Specify search**: $name for only searching with names, $category for categories, etc.

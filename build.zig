@@ -22,6 +22,7 @@ pub fn build(b: *std.Build) void {
     exe.linkSystemLibrary("xkbcommon-x11");
     exe.linkSystemLibrary("cairo");
     exe.linkSystemLibrary("pangocairo");
+    exe.linkSystemLibrary("librsvg-2.0");
     exe.linkLibC();
 
     b.installArtifact(exe);

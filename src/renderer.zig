@@ -3,6 +3,7 @@ const c = @import("c.zig").c;
 const utils = @import("utils.zig");
 const constants = @import("constants.zig");
 const Result = @import("result.zig").Result;
+const icon_mod = @import("icon.zig");
 
 pub const Renderer = struct {
     surface: *c.cairo_surface_t,
@@ -26,6 +27,9 @@ pub const Renderer = struct {
     const font_desc_str = "Inter, DejaVu Sans, Liberation Sans, Noto Sans, Arial, Helvetica, Sans 20";
     const font_desc_small_str = "Inter, DejaVu Sans, Noto Sans, Sans 13";
 
+    pub const icon_padding: f64 = 8.0;
+    pub const text_left: f64 = padding + @as(f64, @floatFromInt(constants.ICON_SIZE)) + icon_padding;
+
     pub fn init(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t, win: u32, visual: *c.xcb_visualtype_t, width: u16, height: u16) !Renderer {
         const surface = c.cairo_xcb_surface_create(conn, win, visual, width, @intCast(utils.calcHeight(constants.MAX_RESULTS))) orelse return error.CairoSurfaceFailed;
         errdefer c.cairo_surface_destroy(surface);
@@ -47,7 +51,7 @@ pub const Renderer = struct {
         c.cairo_surface_destroy(self.surface);
     }
 
-    pub fn draw(self: *Renderer, search_text: []const u8, results: []const Result) void {
+    pub fn draw(self: *Renderer, search_text: []const u8, results: []const Result, icons: *icon_mod.IconCache) void {
         const cr = self.cr;
         const width = self.width;
 
@@ -65,6 +69,7 @@ pub const Renderer = struct {
         c.cairo_set_source_rgb(cr, 0x31.0 / 255.0, 0x31.0 / 255.0, 0x44.0 / 255.0);
         c.cairo_fill(cr);
 
+        // Text input field
         {
             const layout = c.pango_cairo_create_layout(cr) orelse return;
             defer c.g_object_unref(layout);
@@ -101,6 +106,7 @@ pub const Renderer = struct {
             c.cairo_fill(cr);
         }
 
+        // Result list
         if (results.len > 0) {
             c.cairo_set_source_rgb(cr, 0x45.0 / 255.0, 0x47.0 / 255.0, 0x5a.0 / 255.0);
             c.cairo_rectangle(cr, 12.0, constants.SEARCH_BAR_HEIGHT - 1.0, @as(f64, constants.WIN_WIDTH) - 24.0, 1.0);
@@ -114,6 +120,14 @@ pub const Renderer = struct {
                     roundedRect(cr, 6.0, item_y + 2.0, @as(f64, constants.WIN_WIDTH) - 12.0, constants.RESULT_ITEM_HEIGHT - 4.0, 8.0);
                     c.cairo_set_source_rgb(cr, 0x45.0 / 255.0, 0x47.0 / 255.0, 0x5a.0 / 255.0);
                     c.cairo_fill(cr);
+                }
+
+                if (icons.get(result.icon_name)) |icon_surface| {
+                    const icon_x: f64 = 14.0;
+                    const icon_y: f64 = item_y + (constants.RESULT_ITEM_HEIGHT - @as(f64, @floatFromInt(constants.ICON_SIZE))) / 2.0;
+
+                    c.cairo_set_source_surface(cr, icon_surface, icon_x, icon_y);
+                    c.cairo_paint(cr);
                 }
 
                 // Result name
@@ -132,7 +146,7 @@ pub const Renderer = struct {
                         c.cairo_set_source_rgb(cr, 0xba.0 / 255.0, 0xc2.0 / 255.0, 0xde.0 / 255.0);
                     }
 
-                    c.cairo_move_to(cr, padding, item_y + 8.0);
+                    c.cairo_move_to(cr, text_left, item_y + 8.0);
                     c.pango_cairo_show_layout(cr, layout);
                 }
                 // Result description
@@ -147,7 +161,7 @@ pub const Renderer = struct {
 
                     c.cairo_set_source_rgb(cr, placeholder_r, placeholder_g, placeholder_b);
 
-                    c.cairo_move_to(cr, padding, item_y + 32.0);
+                    c.cairo_move_to(cr, text_left, item_y + 32.0);
                     c.pango_cairo_show_layout(cr, layout);
                 }
             }

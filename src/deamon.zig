@@ -1,5 +1,6 @@
 const std = @import("std");
 const c = @import("c.zig").c;
+const Xkb = @import("xkb.zig").Xkb;
 
 const lock_masks = [_]u16{ 0, 0x02, 0x10, 0x02 | 0x10 }; //none, caps, num, caps+num
 
@@ -17,11 +18,19 @@ fn ungrabHotkey(conn: *c.xcb_connection_t, root: u32, modifiers: u16, keycode: u
     _ = c.xcb_flush(conn);
 }
 
-pub fn runDeamon(conn: *c.xcb_connection_t, root: u32, modifiers: u16, keycode: u8, spawnLauncher: *const fn () void) !void {
+pub fn runDeamon(conn: *c.xcb_connection_t, root: u32, modifiers: u16, target_keysym: u32, spawnLauncher: *const fn () void) !void {
+    var xkb = try Xkb.init(conn);
+    const keycode = xkb.getKeycodeForKeysym(target_keysym) orelse {
+        xkb.deinit();
+        std.debug.print("Failed to resolve keycode for keysym {}\n", .{target_keysym});
+        return error.KeycodeResolutionFailed;
+    };
+    xkb.deinit();
+
     grabHotKey(conn, root, modifiers, keycode);
     defer ungrabHotkey(conn, root, modifiers, keycode);
 
-    std.debug.print("Deamon running. Listening for hotkey (mod=0x{x}, keycode={})...\n", .{ modifiers, keycode });
+    std.debug.print("Deamon running. Listening for hotkey (mod=0x{x}, keysym={}, keycode={})...\n", .{ modifiers, target_keysym, keycode });
 
     // Use poll() for clean signal handling later if needed
     const xcb_fd = c.xcb_get_file_descriptor(conn);
