@@ -7,7 +7,11 @@
 - [ ] **Multi-monitor**: xcb-randr to center on active output
 - [ ] **Wayland support**: wlr-layer-shell
 - [ ] **Config file**: Colors, fonts, hotkey, max results from file
-- [ ] **Widgets**: Quick-weather, -math, time, date, etc.
+- [ ] **Widgets**:
+  - [ ] Time Widget
+  - [ ] Math Widget
+  - [ ] Weather
+  - [ ] Date
 - [ ] **Specify search**: $name for only searching with names, $category for categories, etc.
 - [ ] **Add default icons**: Add default icons for applications, with defaults for categories and overall default
 - [ ] **Make Window transparent**: add window transparency for rounded container

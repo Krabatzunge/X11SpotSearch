@@ -19,3 +19,14 @@ pub const Color = struct {
         };
     }
 };
+
+pub const bg: Color = Color.rgb_f(0x1e.0, 0x1e.0, 0x2e.0);
+
+pub const fg: Color = Color.rgb(0xcd, 0xd6, 0xf4);
+
+pub const placeholder: Color = Color.rgb(0x6c, 0x70, 0x86);
+
+pub const container_bg: Color = Color.rgb(0x31, 0x31, 0x44);
+
+pub const selected_bg: Color = Color.rgb(0x45, 0x47, 0x5a);
+pub const unselected_fg: Color = Color.rgb(0xba, 0xc2, 0xde);
