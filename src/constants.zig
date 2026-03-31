@@ -7,3 +7,4 @@ pub const MAX_RESULTS: usize = 5;
 pub const ICON_SIZE: u16 = 32;
 
 pub const CURSOR_BLINK_MS: u32 = 500;
+pub const FRAME_MS: u32 = 16;

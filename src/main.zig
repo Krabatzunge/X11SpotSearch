@@ -114,15 +114,17 @@ fn runLauncher(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
     renderer.draw(search_buf[0..search_len], results_buf[0..0], &icons, true);
 
     const xcb_fd = c.xcb_get_file_descriptor(conn);
-    const timer_fd = c.timerfd_create(c.CLOCK_MONOTONIC, c.TFD_CLOEXEC);
-    defer std.posix.close(timer_fd);
+    const ctimer_fd = c.timerfd_create(c.CLOCK_MONOTONIC, c.TFD_CLOEXEC); // Cursor timer
+    defer std.posix.close(ctimer_fd);
+    const ftimer_fd = c.timerfd_create(c.CLOCK_MONOTONIC, c.TFD_CLOEXEC); // Frame timer (60fps)
 
     // Arm for cursor blink
-    armTimer(timer_fd, constants.CURSOR_BLINK_MS, constants.CURSOR_BLINK_MS);
+    armTimer(ctimer_fd, constants.CURSOR_BLINK_MS, constants.CURSOR_BLINK_MS);
+    armTimer(ftimer_fd, constants.FRAME_MS, constants.FRAME_MS);
 
     var fds = [_]c.struct_pollfd{
         .{ .fd = xcb_fd, .events = c.POLLIN, .revents = 0 },
-        .{ .fd = timer_fd, .events = c.POLLIN, .revents = 0 },
+        .{ .fd = ctimer_fd, .events = c.POLLIN, .revents = 0 },
     };
 
     var cursor_visible = true;
@@ -133,7 +135,7 @@ fn runLauncher(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
 
         if (fds[1].revents & c.POLLIN != 0) {
             var expirations: u64 = 0;
-            _ = std.posix.read(timer_fd, std.mem.asBytes(&expirations)) catch continue;
+            _ = std.posix.read(ctimer_fd, std.mem.asBytes(&expirations)) catch continue;
             cursor_visible = !cursor_visible;
             needs_redraw = true;
         }
@@ -211,7 +213,7 @@ fn runLauncher(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
 
                         if (search_changed) {
                             cursor_visible = true;
-                            armTimer(timer_fd, constants.CURSOR_BLINK_MS, constants.CURSOR_BLINK_MS);
+                            armTimer(ctimer_fd, constants.CURSOR_BLINK_MS, constants.CURSOR_BLINK_MS);
 
                             results_count = 0;
                             selected = 0;

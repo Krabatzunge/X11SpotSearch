@@ -4,6 +4,7 @@ const utils = @import("utils.zig");
 const constants = @import("constants.zig");
 const Result = @import("result.zig").Result;
 const icon_mod = @import("icon.zig");
+const Color = @import("color.zig").Color;
 
 pub const Renderer = struct {
     surface: *c.cairo_surface_t,
@@ -11,17 +12,16 @@ pub const Renderer = struct {
     width: u16,
     height: u16,
 
-    const bg_r: f64 = 0x1e.0 / 255.0;
-    const bg_g: f64 = 0x1e.0 / 255.0;
-    const bg_b: f64 = 0x2e.0 / 255.0;
+    const bg: Color = Color.rgb_f(0x1e.0, 0x1e.0, 0x2e.0);
 
-    const fg_r: f64 = 0xcd.0 / 255.0;
-    const fg_g: f64 = 0xd6.0 / 255.0;
-    const fg_b: f64 = 0xf4.0 / 255.0;
+    const fg: Color = Color.rgb(0xcd, 0xd6, 0xf4);
 
-    const placeholder_r: f64 = 0x6c.0 / 255.0;
-    const placeholder_g: f64 = 0x70.0 / 255.0;
-    const placeholder_b: f64 = 0x86.0 / 255.0;
+    const placeholder: Color = Color.rgb(0x6c, 0x70, 0x86);
+
+    const container_bg: Color = Color.rgb(0x31, 0x31, 0x44);
+
+    const selected_bg: Color = Color.rgb(0x45, 0x47, 0x5a);
+    const unselected_fg: Color = Color.rgb(0xba, 0xc2, 0xde);
 
     const padding: f64 = 16.0;
     const font_desc_str = "Inter, DejaVu Sans, Liberation Sans, Noto Sans, Arial, Helvetica, Sans 20";
@@ -55,7 +55,7 @@ pub const Renderer = struct {
         const cr = self.cr;
         const width = self.width;
 
-        c.cairo_set_source_rgb(cr, bg_r, bg_g, bg_b);
+        c.cairo_set_source_rgb(cr, bg.r, bg.g, bg.b);
         c.cairo_paint(cr);
 
         const margin: f64 = 6.0;
@@ -66,7 +66,7 @@ pub const Renderer = struct {
         const radius: f64 = 10.0;
 
         roundedRect(cr, bar_x, bar_y, bar_w, bar_h, radius);
-        c.cairo_set_source_rgb(cr, 0x31.0 / 255.0, 0x31.0 / 255.0, 0x44.0 / 255.0);
+        c.cairo_set_source_rgb(cr, container_bg.r, container_bg.g, container_bg.b);
         c.cairo_fill(cr);
 
         // Text input field
@@ -79,10 +79,10 @@ pub const Renderer = struct {
             c.pango_layout_set_font_description(layout, font_desc);
 
             if (search_text.len == 0) {
-                c.cairo_set_source_rgb(cr, placeholder_r, placeholder_g, placeholder_b);
+                c.cairo_set_source_rgb(cr, placeholder.r, placeholder.g, placeholder.b);
                 c.pango_layout_set_text(layout, "Search...", -1);
             } else {
-                c.cairo_set_source_rgb(cr, fg_r, fg_g, fg_b);
+                c.cairo_set_source_rgb(cr, fg.r, fg.g, fg.b);
                 c.pango_layout_set_text(layout, search_text.ptr, @intCast(search_text.len));
             }
 
@@ -100,7 +100,7 @@ pub const Renderer = struct {
                 text_w = -2;
 
             if (cursor_visible) {
-                c.cairo_set_source_rgb(cr, fg_r, fg_g, fg_b);
+                c.cairo_set_source_rgb(cr, fg.r, fg.g, fg.b);
                 const cursor_x = text_x + @as(f64, @floatFromInt(text_w)) + 2.0;
                 const cursor_y = bar_y + 10.0;
                 const cursor_h = bar_h - 20.0;
@@ -111,7 +111,7 @@ pub const Renderer = struct {
 
         // Result list
         if (results.len > 0) {
-            c.cairo_set_source_rgb(cr, 0x45.0 / 255.0, 0x47.0 / 255.0, 0x5a.0 / 255.0);
+            c.cairo_set_source_rgb(cr, selected_bg.r, selected_bg.g, selected_bg.b);
             c.cairo_rectangle(cr, 12.0, constants.SEARCH_BAR_HEIGHT - 1.0, @as(f64, constants.WIN_WIDTH) - 24.0, 1.0);
             c.cairo_fill(cr);
 
@@ -121,7 +121,7 @@ pub const Renderer = struct {
 
                 if (result.selected) {
                     roundedRect(cr, 6.0, item_y + 2.0, @as(f64, constants.WIN_WIDTH) - 12.0, constants.RESULT_ITEM_HEIGHT - 4.0, 8.0);
-                    c.cairo_set_source_rgb(cr, 0x45.0 / 255.0, 0x47.0 / 255.0, 0x5a.0 / 255.0);
+                    c.cairo_set_source_rgb(cr, selected_bg.r, selected_bg.g, selected_bg.b);
                     c.cairo_fill(cr);
                 }
 
@@ -144,9 +144,9 @@ pub const Renderer = struct {
                     c.pango_layout_set_text(layout, result.name.ptr, @intCast(result.name.len));
 
                     if (result.selected) {
-                        c.cairo_set_source_rgb(cr, fg_r, fg_g, fg_b);
+                        c.cairo_set_source_rgb(cr, fg.r, fg.g, fg.b);
                     } else {
-                        c.cairo_set_source_rgb(cr, 0xba.0 / 255.0, 0xc2.0 / 255.0, 0xde.0 / 255.0);
+                        c.cairo_set_source_rgb(cr, unselected_fg.r, unselected_fg.g, unselected_fg.b);
                     }
 
                     c.cairo_move_to(cr, text_left, item_y + 8.0);
@@ -162,7 +162,7 @@ pub const Renderer = struct {
                     c.pango_layout_set_font_description(layout, fd);
                     c.pango_layout_set_text(layout, result.description.ptr, @intCast(result.description.len));
 
-                    c.cairo_set_source_rgb(cr, placeholder_r, placeholder_g, placeholder_b);
+                    c.cairo_set_source_rgb(cr, placeholder.r, placeholder.g, placeholder.b);
 
                     c.cairo_move_to(cr, text_left, item_y + 32.0);
                     c.pango_cairo_show_layout(cr, layout);

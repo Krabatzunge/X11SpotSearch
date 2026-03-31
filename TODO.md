@@ -1,4 +1,6 @@
-- [ ] **Cursor blinking**: timerfd + poll() alongside XCB fd
+## Features
+
+- [x] **Cursor blinking**: timerfd + poll() alongside XCB fd
 - [ ] **Smooth resize animation**: frame timer for animated height changes
 - [ ] **Scrolling**: Arrow keys past max_results scrolls the full list
 - [ ] **Clipboard / text selection**: Ctrl + A/C/V via XCB selections
@@ -8,4 +10,9 @@
 - [ ] **Widgets**: Quick-weather, -math, time, date, etc.
 - [ ] **Specify search**: $name for only searching with names, $category for categories, etc.
 - [ ] **Add default icons**: Add default icons for applications, with defaults for categories and overall default
-- [ ] **Make Window transparent**:
+- [ ] **Make Window transparent**: add window transparency for rounded container
+
+## Fixes
+
+- [ ] **Skipping compositor solution**: skipping the compositor leads to glitchy windows on some systems -> find solution for heaving compositor, but getting compositor visual effects applied
+- [ ] **Fix Modifier Key duration**: Modifier keys like shift apply to long in the textinput still impacting up to two keys after modifier key release when typing faster
