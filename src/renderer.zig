@@ -55,9 +55,19 @@ pub const Renderer = struct {
     pub fn draw(self: *Renderer, search_text: []const u8, results: []const Result, icons: *icon_mod.IconCache, cursor_visible: bool) void {
         const cr = self.cr;
         const width = self.width;
+        const height = self.height;
 
-        c.cairo_set_source_rgb(cr, bg.r, bg.g, bg.b);
+        //c.cairo_set_source_rgb(cr, bg.r, bg.g, bg.b);
+        //c.cairo_paint(cr);
+
+        c.cairo_set_operator(cr, c.CAIRO_OPERATOR_SOURCE);
+        c.cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, 0.0);
         c.cairo_paint(cr);
+        c.cairo_set_operator(cr, c.CAIRO_OPERATOR_OVER);
+
+        draw_shapes.roundedRect(cr, 0.0, 0.0, @as(f64, @floatFromInt(width)), @as(f64, @floatFromInt(height)), draw_shapes.Rounding.all(8.0));
+        c.cairo_set_source_rgb(cr, bg.r, bg.g, bg.b);
+        c.cairo_fill(cr);
 
         const margin: f64 = 6.0;
         const bar_x = margin;

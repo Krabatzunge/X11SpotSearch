@@ -60,12 +60,18 @@ fn runLauncher(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
     const x: i16 = @intCast(@divTrunc(@as(i32, screen.*.width_in_pixels) - constants.WIN_WIDTH, 2));
     const y: i16 = @intCast(@divTrunc(@as(i32, screen.*.height_in_pixels) - @as(i32, @intFromFloat(constants.SEARCH_BAR_HEIGHT)), 3));
 
+    const visual = findVisual(screen) orelse return error.VisualNotFound;
+    const colormap = c.xcb_generate_id(conn);
+    _ = c.xcb_create_colormap(conn, c.XCB_COLORMAP_ALLOC_NONE, colormap, screen.*.root, visual.*.visual_id);
+
     const win = c.xcb_generate_id(conn);
 
-    const value_mask = c.XCB_CW_BACK_PIXEL | c.XCB_CW_OVERRIDE_REDIRECT | c.XCB_CW_EVENT_MASK;
+    const value_mask = c.XCB_CW_BACK_PIXEL | c.XCB_CW_BORDER_PIXEL | c.XCB_CW_OVERRIDE_REDIRECT | c.XCB_CW_EVENT_MASK | c.XCB_CW_COLORMAP;
     const value_list = [_]u32{
         // XCB_CW_BACK_PIXEL
-        0x1e1e2e,
+        0x00000000,
+        // XCB_CW_BORDER_PIXEL
+        0x00000000,
         // XCB_CW_OVERRIDE_REDIRECT
         1,
         // XCB_CW_EVENT_MASK
@@ -73,9 +79,11 @@ fn runLauncher(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
             c.XCB_EVENT_MASK_KEY_PRESS |
             c.XCB_EVENT_MASK_VISIBILITY_CHANGE |
             c.XCB_EVENT_MASK_FOCUS_CHANGE,
+        // XCB_CW_COLORMAP
+        colormap,
     };
 
-    _ = c.xcb_create_window(conn, c.XCB_COPY_FROM_PARENT, win, screen.*.root, x, y, constants.WIN_WIDTH, constants.SEARCH_BAR_HEIGHT, 0, c.XCB_WINDOW_CLASS_INPUT_OUTPUT, screen.*.root_visual, value_mask, &value_list);
+    _ = c.xcb_create_window(conn, 32, win, screen.*.root, x, y, constants.WIN_WIDTH, constants.SEARCH_BAR_HEIGHT, 0, c.XCB_WINDOW_CLASS_INPUT_OUTPUT, visual.*.visual_id, value_mask, &value_list);
 
     setEwmhHints(conn, win, screen);
     setMotifHints(conn, win);
@@ -89,7 +97,6 @@ fn runLauncher(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
     var xkb = try Xkb.init(conn);
     defer xkb.deinit();
 
-    const visual = findVisual(screen) orelse return error.VisualNotFound;
     var renderer = try Renderer.init(conn, screen, win, visual, constants.WIN_WIDTH, constants.SEARCH_BAR_HEIGHT);
     defer renderer.deinit();
 
@@ -315,26 +322,28 @@ fn setCompositorHints(conn: *c.xcb_connection_t, win: u32) void {
             _ = c.xcb_change_property(conn, c.XCB_PROP_MODE_REPLACE, win, r.*.atom, c.XCB_ATOM_CARDINAL, 32, 1, @ptrCast(&val));
         }
     }
-    {
-        const cookie = c.xcb_intern_atom(conn, 0, 27, "_NET_WM_BYPASS_COMPOSITOR");
-        const reply = c.xcb_intern_atom_reply(conn, cookie, null);
-        if (reply) |r| {
-            defer std.c.free(r);
-            const val: u32 = 1; // bypass compositing
-            _ = c.xcb_change_property(conn, c.XCB_PROP_MODE_REPLACE, win, r.*.atom, c.XCB_ATOM_CARDINAL, 32, 1, @ptrCast(&val));
-        }
-    }
+    //{
+    //    const cookie = c.xcb_intern_atom(conn, 0, 27, "_NET_WM_BYPASS_COMPOSITOR");
+    //    const reply = c.xcb_intern_atom_reply(conn, cookie, null);
+    //    if (reply) |r| {
+    //        defer std.c.free(r);
+    //        const val: u32 = 1; // bypass compositing
+    //        _ = c.xcb_change_property(conn, c.XCB_PROP_MODE_REPLACE, win, r.*.atom, c.XCB_ATOM_CARDINAL, 32, 1, @ptrCast(&val));
+    //    }
+    //}
 }
 
 fn findVisual(screen: *c.xcb_screen_t) ?*c.xcb_visualtype_t {
     var depth_iter = c.xcb_screen_allowed_depths_iterator(screen);
     while (depth_iter.rem > 0) {
-        var visual_iter = c.xcb_depth_visuals_iterator(depth_iter.data);
-        while (visual_iter.rem > 0) {
-            if (visual_iter.data.*.visual_id == screen.*.root_visual) {
-                return visual_iter.data;
+        if (depth_iter.data.*.depth == 32) {
+            var visual_iter = c.xcb_depth_visuals_iterator(depth_iter.data);
+            while (visual_iter.rem > 0) {
+                if (visual_iter.data.*._class == c.XCB_VISUAL_CLASS_TRUE_COLOR) {
+                    return visual_iter.data;
+                }
+                c.xcb_visualtype_next(&visual_iter);
             }
-            c.xcb_visualtype_next(&visual_iter);
         }
         c.xcb_depth_next(&depth_iter);
     }
