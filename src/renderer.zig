@@ -9,6 +9,7 @@ const draw_shapes = @import("draw_utils/shapes.zig");
 const draw_text = @import("draw_utils/text.zig");
 const RenderContext = @import("draw_utils/context.zig").RenderContext;
 const result_item = @import("widgets/result_item.zig");
+const SearchTag = @import("search.zig").SearchTag;
 
 const Color = colors.Color;
 
@@ -25,6 +26,7 @@ pub const Renderer = struct {
     const selected_bg = colors.selected_bg;
 
     const padding: f64 = 16.0;
+    const search_chip_margin: f64 = 6.0;
     const font_desc_str = "Inter, DejaVu Sans, Liberation Sans, Noto Sans, Arial, Helvetica, Sans 20";
     const font_desc_small_str = "Inter, DejaVu Sans, Noto Sans, Sans 13";
 
@@ -52,10 +54,12 @@ pub const Renderer = struct {
         c.cairo_surface_destroy(self.surface);
     }
 
-    pub fn draw(self: *Renderer, search_text: []const u8, results: []const Result, icons: *icon_mod.IconCache, cursor_visible: bool) void {
+    pub fn draw(self: *Renderer, search_text: []const u8, search_tag: SearchTag, results: []const Result, icons: *icon_mod.IconCache, cursor_visible: bool) void {
         const cr = self.cr;
         const width = self.width;
         const height = self.height;
+
+        const render_tag_chip = search_tag != SearchTag.Unspecified;
 
         //c.cairo_set_source_rgb(cr, bg.r, bg.g, bg.b);
         //c.cairo_paint(cr);
@@ -80,9 +84,33 @@ pub const Renderer = struct {
         c.cairo_set_source_rgb(cr, container_bg.r, container_bg.g, container_bg.b);
         c.cairo_fill(cr);
 
+        var search_chip_width: f64 = 0;
+
+        // SeachTag Chip
+        if (render_tag_chip) {
+            const chip_x = bar_x + search_chip_margin;
+            const chip_y = bar_y + search_chip_margin;
+
+            const c_padding: f64 = 4.0;
+            const display_text = @tagName(search_tag);
+            const txt_size = draw_text.measureText(cr, display_text, font_desc_str);
+
+            search_chip_width = c_padding * 2 + @as(f64, @floatFromInt(txt_size.w));
+            const c_height = bar_h - search_chip_margin * 2;
+
+            const text_x = chip_x + c_padding;
+            const text_y = chip_y + (c_height - @as(f64, @floatFromInt(txt_size.h))) / 2.0;
+
+            draw_shapes.roundedRect(cr, chip_x, chip_y, search_chip_width, c_height, draw_shapes.Rounding.all(8.0));
+            c.cairo_set_source_rgb(cr, bg.r, bg.g, bg.b);
+            c.cairo_fill(cr);
+
+            draw_text.drawText(cr, display_text, font_desc_str, fg, text_x, text_y);
+        }
+
         // Text input field
         {
-            const text_x = bar_x + padding;
+            const text_x = bar_x + padding + search_chip_width;
             const display_text = if (search_text.len == 0) "Search..." else search_text;
             const display_color = if (search_text.len == 0) placeholder else fg;
 

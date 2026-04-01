@@ -7,14 +7,18 @@
 - [ ] **Multi-monitor**: xcb-randr to center on active output
 - [ ] **Wayland support**: wlr-layer-shell
 - [ ] **Config file**: Colors, fonts, hotkey, max results from file
-- [ ] **Widgets**:
+- [ ] **Widgets**: Use "$" to search for widgets
   - [ ] Time Widget
   - [ ] Math Widget
   - [ ] Weather
   - [ ] Date
-- [ ] **Specify search**: $name for only searching with names, $category for categories, etc.
+- [ ] **Specify search**: \#name for only searching with names, \#category for categories, etc.
+  - [x] Name Search
+  - [x] Description Search
+  - [ ] Category Search
 - [ ] **Add default icons**: Add default icons for applications, with defaults for categories and overall default
-- [ ] **Make Window transparent**: add window transparency for rounded container
+- [x] **Make Window transparent**: add window transparency for rounded container
+- [ ] **App Actions**: Use @ to search for app actions
 
 ## Fixes
 

@@ -6,6 +6,7 @@ A Spotlight-like application launcher for X11 environments. It combines a fuzzy 
 
 - **Written in Zig**: Compiled natively for a minimal resource footprint.
 - **Fuzzy Search**: Find and launch applications using fuzzy matching across your system's desktop entries.
+- **Category Search**: Prefix your query with a `#tag` to restrict matching to a specific field (name, description, or category).
 - **Icon Support**: Application icons (PNG, SVG, XPM) are automatically loaded from your system themes and rendered alongside search results.
 - **X11 Native**: Interfaces directly with XCB rather than relying on large GUI toolkits like GTK or Qt.
 - **Daemon Mode**: Run a background process (`--deamon` or `-d`) that listens for a global hotkey (default: `Super + Space`) to spawn the launcher.
@@ -68,6 +69,26 @@ To run X11SpotSearch in the background and listen for a hotkey (default is **Sup
 ```
 
 When running in daemon mode, pressing `Super + Space` will spawn a new instance of the launcher.
+
+## Search Tags
+
+Queries can be prefixed with a `#tag` to restrict fuzzy matching to a specific field of each `.desktop` entry. When a tag is active, a small pill/chip is rendered inside the search bar to indicate the active mode.
+
+| Prefix | Field searched |
+|--------|----------------|
+| *(none)* | Name and description |
+| `#name` | Application name only |
+| `#desc` | Description / comment only |
+| `#cat` | Category field only |
+
+**Examples:**
+
+```
+firefox          # search name + description
+#name fire       # match only against app names
+#desc browser    # match only against descriptions
+#cat office      # match only against categories
+```
 
 ## Configuration
 

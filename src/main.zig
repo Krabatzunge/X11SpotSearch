@@ -5,7 +5,7 @@ const Renderer = @import("renderer.zig").Renderer;
 const constants = @import("constants.zig");
 const Result = @import("result.zig").Result;
 const desktop = @import("desktop.zig");
-const fuzzy_match = @import("fuzzy.zig");
+const fuzzy_match = @import("search.zig");
 const launcher = @import("launcher.zig");
 const mode_config = @import("mode.zig");
 const deamon = @import("deamon.zig");
@@ -115,10 +115,12 @@ fn runLauncher(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
     var scored_buf: [constants.MAX_RESULTS]fuzzy_match.ScoredEntry = undefined;
     var results_count: usize = 0;
     var selected: usize = 0;
+    var search_tag: fuzzy_match.SearchTag = fuzzy_match.SearchTag.Unspecified;
+    var cleaned_search_query: []const u8 = "";
 
     std.debug.print("Launcher window shown at ({}, {}), size {}x{}\n", .{ x, y, constants.WIN_WIDTH, constants.SEARCH_BAR_HEIGHT });
 
-    renderer.draw(search_buf[0..search_len], results_buf[0..0], &icons, true);
+    renderer.draw(cleaned_search_query[0..search_len], search_tag, results_buf[0..0], &icons, true);
 
     const xcb_fd = c.xcb_get_file_descriptor(conn);
     const ctimer_fd = c.timerfd_create(c.CLOCK_MONOTONIC, c.TFD_CLOEXEC); // Cursor timer
@@ -174,8 +176,8 @@ fn runLauncher(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
                                 if (results_count > 0) {
                                     std.debug.print("Launch: \"{s}\"\n", .{results_buf[selected].name});
                                     const scored = fuzzy_match.search(scanner.entries.items, search_buf[0..search_len], &scored_buf);
-                                    if (selected < scored.len) {
-                                        launcher.launch(scored[selected].entry) catch |err| {
+                                    if (selected < scored.entries.len) {
+                                        launcher.launch(scored.entries[selected].entry) catch |err| {
                                             std.debug.print("Launch failed: {}\n", .{err});
                                         };
                                         return;
@@ -225,7 +227,10 @@ fn runLauncher(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
                             results_count = 0;
                             selected = 0;
                             if (search_len > 0) {
-                                const scored = fuzzy_match.search(scanner.entries.items, search_buf[0..search_len], &scored_buf);
+                                const search_res: fuzzy_match.SearchResult = fuzzy_match.search(scanner.entries.items, search_buf[0..search_len], &scored_buf);
+                                const scored = search_res.entries;
+                                search_tag = search_res.tag;
+                                cleaned_search_query = search_res.query;
 
                                 for (scored, 0..) |s, idx| {
                                     results_buf[idx] = .{
@@ -239,6 +244,9 @@ fn runLauncher(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
                                     };
                                 }
                                 results_count = scored.len;
+                            } else {
+                                cleaned_search_query = "";
+                                search_tag = fuzzy_match.SearchTag.Unspecified;
                             }
                         }
 
@@ -259,7 +267,7 @@ fn runLauncher(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
         }
 
         if (needs_redraw) {
-            renderer.draw(search_buf[0..search_len], results_buf[0..results_count], &icons, cursor_visible);
+            renderer.draw(cleaned_search_query, search_tag, results_buf[0..results_count], &icons, cursor_visible);
             _ = c.xcb_flush(conn);
             needs_redraw = false;
         }
