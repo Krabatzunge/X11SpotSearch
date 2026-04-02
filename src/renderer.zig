@@ -10,8 +10,10 @@ const draw_text = @import("draw_utils/text.zig");
 const RenderContext = @import("draw_utils/context.zig").RenderContext;
 const result_item = @import("widgets/result_item.zig");
 const SearchTag = @import("search.zig").SearchTag;
+const Icons = @import("assets.zig").Icons;
 
 const Color = colors.Color;
+const IconType = icon_mod.IconType;
 
 pub const Renderer = struct {
     surface: *c.cairo_surface_t,
@@ -146,7 +148,10 @@ pub const Renderer = struct {
             for (results, 0..) |result, i| {
                 const iy: f64 = @floatFromInt(i);
                 const item_y = constants.SEARCH_BAR_HEIGHT + iy * constants.RESULT_ITEM_HEIGHT;
-                result_item.draw(&result, ctx, item_y, icons.get(result.icon_name));
+                const des_entry_icon = icons.get(result.icon_name, IconType.Path);
+                const default_icon = icons.get(Icons.DefaultApplication.toId(), IconType.Icon);
+                const res_icon = if (des_entry_icon) |ic| ic else if (default_icon) |ic| ic else null;
+                result_item.draw(&result, ctx, item_y, res_icon);
             }
         }
 

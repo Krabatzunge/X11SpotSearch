@@ -7,7 +7,7 @@
 - [ ] **Multi-monitor**: xcb-randr to center on active output
 - [ ] **Wayland support**: wlr-layer-shell
 - [ ] **Config file**: Colors, fonts, hotkey, max results from file
-- [ ] **Widgets**: Use "$" to search for widgets
+- [ ] **Widgets**: Use "$" to search for widgets -> widgets can also appear in normal search as attachment after the last result item
   - [ ] Time Widget
   - [ ] Math Widget
   - [ ] Weather

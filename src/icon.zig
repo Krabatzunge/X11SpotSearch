@@ -1,6 +1,8 @@
 const std = @import("std");
-
+const assets = @import("assets.zig");
 const c = @import("c.zig").c;
+
+pub const IconType = enum { Icon, Path };
 
 pub const IconCache = struct {
     map: std.StringHashMap(*c.cairo_surface_t),
@@ -78,11 +80,28 @@ pub const IconCache = struct {
         self.arena.deinit();
     }
 
-    pub fn get(self: *IconCache, icon_name: []const u8) ?*c.cairo_surface_t {
+    pub fn get(self: *IconCache, icon_name: []const u8, icon_type: IconType) ?*c.cairo_surface_t {
         if (icon_name.len == 0) return null;
 
         if (self.map.get(icon_name)) |surface| return surface;
 
+        switch (icon_type) {
+            IconType.Icon => return self.getIconFromData(icon_name),
+            IconType.Path => return self.getIconFromPath(icon_name),
+        }
+    }
+
+    pub fn getIconFromData(self: *IconCache, icon_id: []const u8) ?*c.cairo_surface_t {
+        const icon = assets.Icons.fromId(icon_id) orelse return null;
+        const surface = self.loadSvgFromMem(assets.Icons.getData(icon)) catch return null;
+        if (surface) |sur| {
+            self.map.put(icon_id, sur) catch {};
+            return surface;
+        }
+        return null;
+    }
+
+    pub fn getIconFromPath(self: *IconCache, icon_name: []const u8) ?*c.cairo_surface_t {
         if (icon_name[0] == '/') {
             std.debug.print("Searching abosulte icon: {s}\n", .{icon_name});
             if (self.loadIcon(icon_name)) |surface| {
@@ -130,16 +149,16 @@ pub const IconCache = struct {
         const path_z = alloc.dupeZ(u8, path) catch return null;
 
         if (std.mem.endsWith(u8, path, ".svg")) {
-            return self.loadSvg(path_z.ptr);
+            return self.loadSvgFromPath(path_z.ptr);
         } else if (std.mem.endsWith(u8, path, ".png")) {
             std.debug.print("Loading png with page: {s}\n", .{path});
-            return self.loadPng(path_z.ptr);
+            return self.loadPngFromPath(path_z.ptr);
         }
 
         return null;
     }
 
-    fn loadPng(self: *IconCache, path: [*c]const u8) ?*c.cairo_surface_t {
+    fn loadPngFromPath(self: *IconCache, path: [*c]const u8) ?*c.cairo_surface_t {
         const img = c.cairo_image_surface_create_from_png(path);
         std.debug.print("Creating cairo_surface for path\n", .{});
         if (c.cairo_surface_status(img) != c.CAIRO_STATUS_SUCCESS) {
@@ -171,7 +190,7 @@ pub const IconCache = struct {
         return scaled;
     }
 
-    fn loadSvg(self: *IconCache, path: [*c]const u8) ?*c.cairo_surface_t {
+    fn loadSvgFromPath(self: *IconCache, path: [*c]const u8) ?*c.cairo_surface_t {
         const handle = c.rsvg_handle_new_from_file(path, null) orelse return null;
         defer c.g_object_unref(handle);
 
@@ -187,6 +206,23 @@ pub const IconCache = struct {
             .width = target,
             .height = target,
         };
+
+        _ = c.rsvg_handle_render_document(handle, cr, &viewport, null);
+
+        return surface;
+    }
+
+    fn loadSvgFromMem(self: *IconCache, data: []const u8) !?*c.cairo_surface_t {
+        const handle = c.rsvg_handle_new_from_data(data.ptr, data.len, null) orelse return error.RsvgFailed;
+        defer c.g_object_unref(handle);
+
+        const target: f64 = @floatFromInt(self.icon_size);
+
+        const surface = c.cairo_image_surface_create(c.CAIRO_FORMAT_ARGB32, @intCast(self.icon_size), @intCast(self.icon_size));
+        const cr = c.cairo_create(surface);
+        defer c.cairo_destroy(cr);
+
+        var viewport = c.RsvgRectangle{ .x = 0, .y = 0, .width = target, .height = target };
 
         _ = c.rsvg_handle_render_document(handle, cr, &viewport, null);
 
