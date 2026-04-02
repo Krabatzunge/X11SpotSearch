@@ -3,7 +3,7 @@ const c = @import("c.zig").c;
 const utils = @import("utils.zig");
 const constants = @import("constants.zig");
 const Result = @import("result.zig").Result;
-const icon_mod = @import("icon.zig");
+const icon_mod = @import("icons/icon.zig");
 const colors = @import("colors.zig");
 const draw_shapes = @import("draw_utils/shapes.zig");
 const draw_text = @import("draw_utils/text.zig");
@@ -13,7 +13,6 @@ const SearchTag = @import("search.zig").SearchTag;
 const Icons = @import("assets.zig").Icons;
 
 const Color = colors.Color;
-const IconType = icon_mod.IconType;
 
 pub const Renderer = struct {
     surface: *c.cairo_surface_t,
@@ -56,7 +55,7 @@ pub const Renderer = struct {
         c.cairo_surface_destroy(self.surface);
     }
 
-    pub fn draw(self: *Renderer, search_text: []const u8, search_tag: SearchTag, results: []const Result, icons: *icon_mod.IconCache, cursor_visible: bool) void {
+    pub fn draw(self: *Renderer, search_text: []const u8, search_tag: SearchTag, results: []const Result, icons: *icon_mod.IconModule, cursor_visible: bool) void {
         const cr = self.cr;
         const width = self.width;
         const height = self.height;
@@ -145,12 +144,12 @@ pub const Renderer = struct {
                 .text_left = text_left,
             };
 
+            const default_icon = icons.loadEmbeddedIcon(Icons.DefaultApplication, colors.fg, constants.ICON_SIZE);
             for (results, 0..) |result, i| {
                 const iy: f64 = @floatFromInt(i);
                 const item_y = constants.SEARCH_BAR_HEIGHT + iy * constants.RESULT_ITEM_HEIGHT;
-                const des_entry_icon = icons.get(result.icon_name, IconType.Path);
-                const default_icon = icons.get(Icons.DefaultApplication.toId(), IconType.Icon);
-                const res_icon = if (des_entry_icon) |ic| ic else if (default_icon) |ic| ic else null;
+                const des_entry_icon = icons.loadDesktopIcon(result.icon_name, constants.ICON_SIZE);
+                const res_icon = des_entry_icon orelse default_icon;
                 result_item.draw(&result, ctx, item_y, res_icon);
             }
         }

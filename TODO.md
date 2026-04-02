@@ -17,6 +17,8 @@
   - [x] Description Search
   - [ ] Category Search
 - [ ] **Add default icons**: Add default icons for applications, with defaults for categories and overall default
+  - [x] Default icon
+  - [ ] Default category icons
 - [x] **Make Window transparent**: add window transparency for rounded container
 - [ ] **App Actions**: Use @ to search for app actions
 

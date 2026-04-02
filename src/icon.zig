@@ -103,13 +103,10 @@ pub const IconCache = struct {
 
     pub fn getIconFromPath(self: *IconCache, icon_name: []const u8) ?*c.cairo_surface_t {
         if (icon_name[0] == '/') {
-            std.debug.print("Searching abosulte icon: {s}\n", .{icon_name});
             if (self.loadIcon(icon_name)) |surface| {
-                std.debug.print("Loaded absolute icon: {s}\n", .{icon_name});
                 self.map.put(icon_name, surface) catch {};
                 return surface;
             }
-            std.debug.print("Failed to load absolute icon: {s}\n", .{icon_name});
             return null;
         }
 

@@ -9,7 +9,7 @@ const fuzzy_match = @import("search.zig");
 const launcher = @import("launcher.zig");
 const mode_config = @import("mode.zig");
 const deamon = @import("deamon.zig");
-const icon_mod = @import("icon.zig");
+const icon_mod = @import("icons/icon.zig");
 
 pub fn main() !void {
     const config = mode_config.Config.parse();
@@ -105,7 +105,7 @@ fn runLauncher(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
     try scanner.scan();
     std.debug.print("Loaded {} desktop entries\n", .{scanner.entries.items.len});
 
-    var icons = try icon_mod.IconCache.init(std.heap.page_allocator, constants.ICON_SIZE);
+    var icons = try icon_mod.IconModule.init(std.heap.page_allocator);
     defer icons.deinit();
 
     var search_buf: [256]u8 = undefined;
