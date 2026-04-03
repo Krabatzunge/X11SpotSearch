@@ -17,6 +17,8 @@ const Color = colors.Color;
 pub const Renderer = struct {
     surface: *c.cairo_surface_t,
     cr: *c.cairo_t,
+    back_surface: *c.cairo_surface_t,
+    back_cr: *c.cairo_t,
     width: u16,
     height: u16,
 
@@ -35,28 +37,36 @@ pub const Renderer = struct {
     pub const text_left: f64 = padding + @as(f64, @floatFromInt(constants.ICON_SIZE)) + icon_padding;
 
     pub fn init(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t, win: u32, visual: *c.xcb_visualtype_t, width: u16, height: u16) !Renderer {
-        const surface = c.cairo_xcb_surface_create(conn, win, visual, width, @intCast(utils.calcHeight(constants.MAX_RESULTS))) orelse return error.CairoSurfaceFailed;
-        errdefer c.cairo_surface_destroy(surface);
+        const max_height: c_int = @intCast(utils.calcHeight(constants.MAX_RESULTS));
 
+        const surface = c.cairo_xcb_surface_create(conn, win, visual, width, max_height) orelse return error.CairoSurfaceFailed;
+        errdefer c.cairo_surface_destroy(surface);
         const cr = c.cairo_create(surface) orelse return error.CairoCreateFailed;
+
+        const back_surface = c.cairo_image_surface_create(c.CAIRO_FORMAT_ARGB32, width, max_height) orelse return error.CairoSurfaceFailed;
+        errdefer c.cairo_surface_destroy(back_surface);
+        const back_cr = c.cairo_create(back_surface) orelse return error.CairoCreateFailed;
 
         const font_opts = c.cairo_font_options_create();
         defer c.cairo_font_options_destroy(font_opts);
         c.cairo_font_options_set_antialias(font_opts, c.CAIRO_ANTIALIAS_SUBPIXEL);
-        c.cairo_set_font_options(cr, font_opts);
+        c.cairo_set_font_options(back_cr, font_opts);
 
         _ = screen;
 
-        return .{ .surface = surface, .cr = cr, .width = width, .height = height };
+        return .{ .surface = surface, .cr = cr, .width = width, .height = height, .back_surface = back_surface, .back_cr = back_cr };
     }
 
     pub fn deinit(self: *Renderer) void {
         c.cairo_destroy(self.cr);
         c.cairo_surface_destroy(self.surface);
+        c.cairo_destroy(self.back_cr);
+        c.cairo_surface_destroy(self.back_surface);
     }
 
     pub fn draw(self: *Renderer, search_text: []const u8, search_tag: SearchTag, results: []const Result, icons: *icon_mod.IconModule, cursor_visible: bool) void {
-        const cr = self.cr;
+        const xcb_cr = self.cr;
+        const cr = self.back_cr;
         const width = self.width;
         const height = self.height;
 
@@ -155,6 +165,11 @@ pub const Renderer = struct {
             }
         }
 
+        c.cairo_surface_flush(self.back_surface);
+
+        c.cairo_set_operator(xcb_cr, c.CAIRO_OPERATOR_SOURCE);
+        c.cairo_set_source_surface(xcb_cr, self.back_surface, 0, 0);
+        c.cairo_paint(xcb_cr);
         c.cairo_surface_flush(self.surface);
     }
 

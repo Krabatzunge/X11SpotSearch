@@ -16,9 +16,9 @@
   - [x] Name Search
   - [x] Description Search
   - [ ] Category Search (best thing is to have category search where you select categories and then have a search within this category for apps -> more complicated skip for now)
-- [ ] **Add default icons**: Add default icons for applications, with defaults for categories and overall default
+- [x] **Add default icons**: Add default icons for applications, with defaults for categories and overall default
   - [x] Default icon
-  - [ ] Default category icons (Desktop entry already supports categories)
+  - [x] Default category icons (Desktop entry already supports categories)
 - [x] **Make Window transparent**: add window transparency for rounded container
 - [ ] **App Actions**: Use @ to search for app actions
 
@@ -30,5 +30,5 @@
 ## Fixes
 
 - [x] **Skipping compositor solution**: skipping the compositor leads to glitchy windows on some systems -> find solution for heaving compositor, but getting compositor visual effects applied
-- [ ] **Still glitchy even with compositor**
-- [ ] **Fix Modifier Key duration**: Modifier keys like shift apply to long in the textinput still impacting up to two keys after modifier key release when typing faster
+- [x] **Still glitchy even with compositor**
+- [x] **Fix Modifier Key duration**: Modifier keys like shift apply to long in the textinput still impacting up to two keys after modifier key release when typing faster

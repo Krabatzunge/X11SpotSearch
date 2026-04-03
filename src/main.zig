@@ -163,6 +163,7 @@ fn runLauncher(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
                     c.XCB_KEY_PRESS => {
                         const key_event: *c.xcb_key_press_event_t = @ptrCast(event);
                         //std.debug.print("Key press: keycode={}.\n", .{key_event.detail});
+                        xkb.updateState(conn);
                         const result = xkb.processKeyEvent(key_event.detail);
                         var search_changed = false;
 
@@ -217,8 +218,6 @@ fn runLauncher(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
                                 }
                             },
                         }
-
-                        xkb.updateState(conn);
 
                         if (search_changed) {
                             cursor_visible = true;
