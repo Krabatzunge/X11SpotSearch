@@ -144,12 +144,13 @@ pub const Renderer = struct {
                 .text_left = text_left,
             };
 
-            const default_icon = icons.loadEmbeddedIcon(Icons.DefaultApplication, colors.fg, constants.ICON_SIZE);
+            //const default_icon = icons.loadEmbeddedIcon(Icons.DefaultApplication, colors.fg, constants.ICON_SIZE);
             for (results, 0..) |result, i| {
                 const iy: f64 = @floatFromInt(i);
                 const item_y = constants.SEARCH_BAR_HEIGHT + iy * constants.RESULT_ITEM_HEIGHT;
-                const des_entry_icon = icons.loadDesktopIcon(result.icon_name, constants.ICON_SIZE);
-                const res_icon = des_entry_icon orelse default_icon;
+                //const des_entry_icon = icons.loadDesktopIcon(result.icon_name, constants.ICON_SIZE);
+                //const res_icon = des_entry_icon orelse default_icon;
+                const res_icon = icons.loadIcon(result.icon, constants.ICON_SIZE, colors.fg);
                 result_item.draw(&result, ctx, item_y, res_icon);
             }
         }

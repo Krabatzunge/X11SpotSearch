@@ -15,12 +15,17 @@
 - [ ] **Specify search**: \#name for only searching with names, \#category for categories, etc.
   - [x] Name Search
   - [x] Description Search
-  - [ ] Category Search
+  - [ ] Category Search (best thing is to have category search where you select categories and then have a search within this category for apps -> more complicated skip for now)
 - [ ] **Add default icons**: Add default icons for applications, with defaults for categories and overall default
   - [x] Default icon
-  - [ ] Default category icons
+  - [ ] Default category icons (Desktop entry already supports categories)
 - [x] **Make Window transparent**: add window transparency for rounded container
 - [ ] **App Actions**: Use @ to search for app actions
+
+## Improvements
+
+- [x] **Icon Cache hit** Desktop files without icons are constantly triggering research (expensive) as the cache is on the default application icon instead of their application name
+- [x] **Add X- Category parsing**: parse for X- categories to add custom category support
 
 ## Fixes
 

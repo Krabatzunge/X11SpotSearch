@@ -239,7 +239,7 @@ fn runLauncher(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
                                             s.entry.comment
                                         else
                                             s.entry.exec,
-                                        .icon_name = s.entry.icon,
+                                        .icon = s.entry.icon,
                                         .selected = false,
                                     };
                                 }

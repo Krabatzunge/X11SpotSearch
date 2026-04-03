@@ -1,11 +1,15 @@
 const std = @import("std");
+const constants = @import("constants.zig");
+const Icon = @import("icons/icon_struct.zig").Icon;
 
 pub const DesktopEntry = struct {
     name: []const u8,
     exec: []const u8,
-    icon: []const u8,
+    icon: Icon,
     comment: []const u8,
     path: []const u8,
+    main_category: []const u8,
+    sub_categories: []const []const u8,
     no_display: bool,
     hidden: bool,
 
@@ -130,15 +134,21 @@ pub const DesktopScanner = struct {
         var entry = DesktopEntry{
             .name = "",
             .exec = "",
-            .icon = "",
+            .icon = Icon.initEmbedded(constants.DEFAULT_APPLICATION_ICON),
             .comment = "",
             .path = full_path,
+            .main_category = "",
+            .sub_categories = &.{},
             .no_display = false,
             .hidden = false,
         };
 
         var in_desktop_entry = false;
         var line_iter = std.mem.splitScalar(u8, content, '\n');
+
+        var icon_value: ?[]const u8 = null;
+        var main_category: []const u8 = "";
+        var sub_cats: std.ArrayList([]const u8) = .empty;
 
         while (line_iter.next()) |raw_line| {
             const line = std.mem.trimEnd(u8, raw_line, &.{ '\r', ' ', '\t' });
@@ -167,9 +177,18 @@ pub const DesktopScanner = struct {
                 } else if (std.mem.eql(u8, key, "Exec")) {
                     entry.exec = alloc.dupe(u8, value) catch return null;
                 } else if (std.mem.eql(u8, key, "Icon")) {
-                    entry.icon = alloc.dupe(u8, value) catch return null;
+                    icon_value = alloc.dupe(u8, value) catch return null;
                 } else if (std.mem.eql(u8, key, "Comment")) {
                     entry.comment = alloc.dupe(u8, value) catch return null;
+                } else if (std.mem.eql(u8, key, "Categories")) {
+                    var cat_iter = std.mem.tokenizeScalar(u8, value, ';');
+                    while (cat_iter.next()) |cat| {
+                        if (main_category.len == 0 and constants.MAIN_CATEGORIES.get(cat) != null) {
+                            main_category = alloc.dupe(u8, cat) catch cat;
+                        } else {
+                            sub_cats.append(alloc, alloc.dupe(u8, cat) catch continue) catch {};
+                        }
+                    }
                 } else if (std.mem.eql(u8, key, "NoDisplay")) {
                     entry.no_display = std.mem.eql(u8, value, "true");
                 } else if (std.mem.eql(u8, key, "Hidden")) {
@@ -180,6 +199,26 @@ pub const DesktopScanner = struct {
             }
         }
 
+        entry.main_category = main_category;
+        entry.sub_categories = sub_cats.items; // INFO: slight overallocation
+        entry.icon = determineIcon(icon_value, main_category);
+
         return entry;
+    }
+
+    /// Classify the icon without touching the filesystem.  Actual path
+    /// resolution for named icons is deferred to `IconModule.loadIcon` at
+    /// render time so that scanning stays fast.
+    fn determineIcon(name: ?[]const u8, main_cat: []const u8) Icon {
+        const fallback = constants.MAIN_CATEGORIES.get(main_cat) orelse constants.DEFAULT_APPLICATION_ICON;
+        if (name) |n| {
+            if (n.len == 0) return Icon{ .embedded = fallback };
+            // Absolute path: use it directly, no discovery needed.
+            if (n[0] == '/') return Icon{ .path = n };
+            // Named icon: defer filesystem discovery to render time.
+            return Icon{ .name = .{ .icon_name = n, .fallback = fallback } };
+        }
+        // No Icon= field at all: use the category/default embedded icon.
+        return Icon{ .embedded = fallback };
     }
 };
