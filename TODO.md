@@ -11,7 +11,7 @@
   - [ ] Time Widget
   - [ ] Math Widget
   - [ ] Weather
-  - [ ] Date
+  - [x] Date
 - [ ] **Specify search**: \#name for only searching with names, \#category for categories, etc.
   - [x] Name Search
   - [x] Description Search

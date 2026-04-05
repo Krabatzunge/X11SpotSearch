@@ -124,7 +124,7 @@ fn runLauncher(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
 
     std.debug.print("Launcher window shown at ({}, {}), size {}x{}\n", .{ x, y, constants.WIN_WIDTH, constants.SEARCH_BAR_HEIGHT });
 
-    renderer.draw(cleaned_search_query[0..search_len], search_tag, results_buf[0..0], &icons, true);
+    renderer.draw(cleaned_search_query[0..search_len], search_tag, results_buf[0..0], &icons, true, null);
 
     const xcb_fd = c.xcb_get_file_descriptor(conn);
     const ctimer_fd = c.timerfd_create(c.CLOCK_MONOTONIC, c.TFD_CLOEXEC); // Cursor timer
@@ -258,7 +258,7 @@ fn runLauncher(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
                             r.selected = (j == selected);
                         }
 
-                        renderer.resizeWindow(conn, win, results_count);
+                        renderer.resizeWindow(conn, win, results_count, widget_manager.active_widget != null);
                         needs_redraw = true;
                     },
                     c.XCB_FOCUS_OUT => {
@@ -271,7 +271,7 @@ fn runLauncher(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
         }
 
         if (needs_redraw) {
-            renderer.draw(cleaned_search_query, search_tag, results_buf[0..results_count], &icons, cursor_visible);
+            renderer.draw(cleaned_search_query, search_tag, results_buf[0..results_count], &icons, cursor_visible, widget_manager.active_widget);
             _ = c.xcb_flush(conn);
             needs_redraw = false;
         }
