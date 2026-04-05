@@ -10,6 +10,7 @@ const launcher = @import("launcher.zig");
 const mode_config = @import("mode.zig");
 const deamon = @import("deamon.zig");
 const icon_mod = @import("icons/icon.zig");
+const WidgetManager = @import("widgets/widget_manager.zig").WidgetManager;
 
 pub fn main() !void {
     const config = mode_config.Config.parse();
@@ -107,6 +108,9 @@ fn runLauncher(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
 
     var icons = try icon_mod.IconModule.init(std.heap.page_allocator);
     defer icons.deinit();
+
+    var widget_manager = try WidgetManager.init(std.heap.page_allocator);
+    defer widget_manager.deinit();
 
     var search_buf: [256]u8 = undefined;
     var search_len: usize = 0;
@@ -226,6 +230,7 @@ fn runLauncher(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
                             results_count = 0;
                             selected = 0;
                             if (search_len > 0) {
+                                widget_manager.determineWidget(search_buf[0..search_len]);
                                 const search_res: fuzzy_match.SearchResult = fuzzy_match.search(scanner.entries.items, search_buf[0..search_len], &scored_buf);
                                 const scored = search_res.entries;
                                 search_tag = search_res.tag;

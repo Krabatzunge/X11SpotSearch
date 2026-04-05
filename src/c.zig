@@ -12,4 +12,5 @@ pub const c = @cImport({
     @cInclude("poll.h");
     @cInclude("librsvg/rsvg.h");
     @cInclude("sys/timerfd.h");
+    @cInclude("time.h");
 });

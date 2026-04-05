@@ -32,3 +32,4 @@
 - [x] **Skipping compositor solution**: skipping the compositor leads to glitchy windows on some systems -> find solution for heaving compositor, but getting compositor visual effects applied
 - [x] **Still glitchy even with compositor**
 - [x] **Fix Modifier Key duration**: Modifier keys like shift apply to long in the textinput still impacting up to two keys after modifier key release when typing faster
+- [ ] **Fast typing render issue**: When fast typing (example word "date"). The last character isn't rendered until another keyboard even like arrow left is fired even though the rendering (like the cursor) is perfectly working -> problem with X11 input
