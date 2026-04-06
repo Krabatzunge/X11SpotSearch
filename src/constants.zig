@@ -29,3 +29,18 @@ pub const MAIN_CATEGORIES = std.StaticStringMap(assets.Icons).initComptime(.{
     .{ "Utility", .DefCatUtility },
 });
 pub const DEFAULT_APPLICATION_ICON = assets.Icons.DefaultApplication;
+
+pub const MONTH_NAMES = [_][]const u8{
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+};

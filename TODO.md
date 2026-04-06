@@ -8,7 +8,7 @@
 - [ ] **Wayland support**: wlr-layer-shell
 - [ ] **Config file**: Colors, fonts, hotkey, max results from file
 - [ ] **Widgets**: Use "$" to search for widgets -> widgets can also appear in normal search as attachment after the last result item
-  - [ ] Time Widget
+  - [x] Time Widget
   - [ ] Math Widget
   - [ ] Weather
   - [x] Date

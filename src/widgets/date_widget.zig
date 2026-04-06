@@ -8,21 +8,7 @@ const colors = @import("../colors.zig");
 const c = @import("../c.zig").c;
 
 const fg = colors.fg;
-
-const month_names = [_][]const u8{
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-};
+const month_names = constants.MONTH_NAMES;
 
 pub const DateWidget = struct {
     date: ?DateTime,

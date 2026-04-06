@@ -1,6 +1,7 @@
 const std = @import("std");
 const Widget = @import("widget_struct.zig").Widget;
 const DateWidget = @import("date_widget.zig").DateWidget;
+const TimeWidget = @import("time_widget.zig").TimeWidget;
 const RenderContext = @import("../draw_utils/context.zig").RenderContext;
 
 pub const WidgetManager = struct {
@@ -21,6 +22,10 @@ pub const WidgetManager = struct {
         const date_ptr = try alloc.create(DateWidget);
         date_ptr.* = DateWidget.create();
         try map.put(DateWidget.getId(), date_ptr.asWidget());
+
+        const time_ptr = try alloc.create(TimeWidget);
+        time_ptr.* = TimeWidget.create();
+        try map.put(TimeWidget.getId(), time_ptr.asWidget());
 
         return .{
             .arena = arena,
