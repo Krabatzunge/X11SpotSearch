@@ -9,12 +9,12 @@
 - [ ] **Config file**: Colors, fonts, hotkey, max results from file
 - [ ] **Widgets**: Use "$" to search for widgets -> widgets can also appear in normal search as attachment after the last result item
   - [x] Time Widget
-  - [ ] Math Widget
+  - [x] Math Widget
     - [ ] Add different system support: binary, hex, ..
   - [ ] Weather
   - [x] Date
   - [ ] Converter
-- [ ] **Specify search**: \#name for only searching with names, \#category for categories, etc.
+- [x] **Specify search**: \#name for only searching with names, \#category for categories, etc.
   - [x] Name Search
   - [x] Description Search
   - [ ] Category Search (best thing is to have category search where you select categories and then have a search within this category for apps -> more complicated skip for now)

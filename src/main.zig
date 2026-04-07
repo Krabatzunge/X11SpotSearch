@@ -11,9 +11,15 @@ const mode_config = @import("mode.zig");
 const deamon = @import("deamon.zig");
 const icon_mod = @import("icons/icon.zig");
 const WidgetManager = @import("widgets/widget_manager.zig").WidgetManager;
+const Config = @import("config/config.zig").Config;
+const ConfigParser = @import("config/config_parser.zig").ConfigParser;
 
 pub fn main() !void {
-    const config = mode_config.Config.parse();
+    const mode = mode_config.parse();
+    var config_parser = ConfigParser.init(std.heap.page_allocator);
+    defer config_parser.deinit();
+
+    const config = config_parser.parseConfig();
 
     var screen_num: c_int = 0;
     const conn = c.xcb_connect(null, &screen_num) orelse
@@ -32,13 +38,13 @@ pub fn main() !void {
     }
     const screen = iter.data;
 
-    switch (config.mode) {
-        .oneshot => try runLauncher(conn, screen),
+    switch (mode) {
+        .oneshot => try runLauncher(config, conn, screen),
         .daemon => try runAsDaemon(config, conn, screen),
     }
 }
 
-fn runAsDaemon(config: mode_config.Config, conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
+fn runAsDaemon(config: Config, conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
     try deamon.runDeamon(conn, screen.*.root, config.hotkey_mod, config.hotkey_keysym, spawnOneshot);
 }
 
@@ -57,7 +63,8 @@ fn spawnOneshot() void {
     _ = std.posix.waitpid(pid, 0);
 }
 
-fn runLauncher(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
+fn runLauncher(config: Config, conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
+    _ = config;
     const x: i16 = @intCast(@divTrunc(@as(i32, screen.*.width_in_pixels) - constants.WIN_WIDTH, 2));
     const y: i16 = @intCast(@divTrunc(@as(i32, screen.*.height_in_pixels) - @as(i32, @intFromFloat(constants.SEARCH_BAR_HEIGHT)), 3));
 

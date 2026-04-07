@@ -1,6 +1,8 @@
 const std = @import("std");
 const assets = @import("assets.zig");
 
+pub const APP_NAME = "spot-sear";
+
 pub const WIN_WIDTH: u16 = 600;
 //const WIN_HEIGHT: u16 = 60;
 pub const SEARCH_BAR_HEIGHT: f64 = 60.0;
