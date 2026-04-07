@@ -10,8 +10,10 @@
 - [ ] **Widgets**: Use "$" to search for widgets -> widgets can also appear in normal search as attachment after the last result item
   - [x] Time Widget
   - [ ] Math Widget
+    - [ ] Add different system support: binary, hex, ..
   - [ ] Weather
   - [x] Date
+  - [ ] Converter
 - [ ] **Specify search**: \#name for only searching with names, \#category for categories, etc.
   - [x] Name Search
   - [x] Description Search

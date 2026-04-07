@@ -32,7 +32,8 @@ pub const DateWidget = struct {
         };
     }
 
-    fn draw(ctx: *anyopaque, render_ctx: RenderContext, y: f64) void {
+    fn draw(ctx: *anyopaque, render_ctx: RenderContext, y: f64, query: []const u8) void {
+        _ = query;
         const self: *DateWidget = @ptrCast(@alignCast(ctx));
         const date = self.date orelse return;
 

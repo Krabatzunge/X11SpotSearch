@@ -183,7 +183,7 @@ pub const Renderer = struct {
                 .text_left = text_left,
             };
 
-            w.draw(w.ctx, widget_ctx, widget_sep_y + 1.0);
+            w.draw(w.ctx, widget_ctx, widget_sep_y + 1.0, search_text);
         }
 
         c.cairo_surface_flush(self.back_surface);

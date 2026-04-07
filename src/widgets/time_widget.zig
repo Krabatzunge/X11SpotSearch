@@ -29,7 +29,8 @@ pub const TimeWidget = struct {
         };
     }
 
-    fn draw(ctx: *anyopaque, render_ctx: RenderContext, y: f64) void {
+    fn draw(ctx: *anyopaque, render_ctx: RenderContext, y: f64, query: []const u8) void {
+        _ = query;
         const self: *TimeWidget = @ptrCast(@alignCast(ctx));
         _ = self;
         const date = DateTime.init() catch return;

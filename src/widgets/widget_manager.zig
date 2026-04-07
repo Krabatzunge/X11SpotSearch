@@ -1,58 +1,69 @@
 const std = @import("std");
 const Widget = @import("widget_struct.zig").Widget;
+const Detector = @import("detector.zig").Detector;
+const KeywordDetector = @import("detector.zig").KeywordDetector;
 const DateWidget = @import("date_widget.zig").DateWidget;
 const TimeWidget = @import("time_widget.zig").TimeWidget;
+const CalcWidget = @import("calc_widget.zig").CalcWidget;
+const CalcDetector = @import("calc_widget.zig").CalcDetector;
 const RenderContext = @import("../draw_utils/context.zig").RenderContext;
+
+const WidgetEntry = struct {
+    detector: Detector,
+    widget: Widget,
+};
 
 pub const WidgetManager = struct {
     arena: std.heap.ArenaAllocator,
     allocator: std.mem.Allocator,
-    widget_map: std.StringHashMap(Widget),
+    entries: []WidgetEntry,
 
     active_widget: ?Widget,
-
-    // Widgets
-    date: *DateWidget,
 
     pub fn init(allocator: std.mem.Allocator) !WidgetManager {
         var arena = std.heap.ArenaAllocator.init(allocator);
         const alloc = arena.allocator();
-        var map = std.StringHashMap(Widget).init(allocator);
 
         const date_ptr = try alloc.create(DateWidget);
         date_ptr.* = DateWidget.create();
-        try map.put(DateWidget.getId(), date_ptr.asWidget());
+        const date_det = try alloc.create(KeywordDetector);
+        date_det.* = KeywordDetector.create(DateWidget.getId());
 
         const time_ptr = try alloc.create(TimeWidget);
         time_ptr.* = TimeWidget.create();
-        try map.put(TimeWidget.getId(), time_ptr.asWidget());
+        const time_det = try alloc.create(KeywordDetector);
+        time_det.* = KeywordDetector.create(TimeWidget.getId());
+
+        const calc_ptr = try alloc.create(CalcWidget);
+        calc_ptr.* = CalcWidget.create();
+        const calc_det = try alloc.create(CalcDetector);
+        calc_det.* = CalcDetector.create();
+
+        const entries = try alloc.alloc(WidgetEntry, 3);
+        entries[0] = .{ .detector = date_det.asDetector(), .widget = date_ptr.asWidget() };
+        entries[1] = .{ .detector = time_det.asDetector(), .widget = time_ptr.asWidget() };
+        entries[2] = .{ .detector = calc_det.asDetector(), .widget = calc_ptr.asWidget() };
 
         return .{
             .arena = arena,
             .allocator = allocator,
-            .widget_map = map,
+            .entries = entries,
             .active_widget = null,
-            .date = date_ptr,
         };
     }
 
     pub fn deinit(self: *WidgetManager) void {
-        self.widget_map.deinit();
         self.arena.deinit();
     }
 
     pub fn determineWidget(self: *WidgetManager, query: []const u8) void {
-        //TODO: add $ starting search testing
         const previous_widget = self.active_widget;
         self.active_widget = null;
-        var iter = std.mem.tokenizeScalar(u8, query, ' ');
 
-        while (iter.next()) |word| {
-            var buf: [64]u8 = undefined;
-            if (word.len > buf.len) continue;
-            const lower = std.ascii.lowerString(buf[0..word.len], word);
-            self.active_widget = self.widget_map.get(lower) orelse continue;
-            std.debug.print("Found widget {s}", .{lower});
+        for (self.entries) |entry| {
+            if (entry.detector.matches(entry.detector.ctx, query)) {
+                self.active_widget = entry.widget;
+            }
         }
 
         const prev_ctx: ?*anyopaque = if (previous_widget) |w| w.ctx else null;
@@ -67,10 +78,4 @@ pub const WidgetManager = struct {
             }
         }
     }
-
-    //pub fn draw(self: *WidgetManager, render_ctx: RenderContext, y: f64) void {
-    //    if (self.active_widget) |widget| {
-    //        widget.draw(widget.ctx, render_ctx, y);
-    //    }
-    //}
 };
