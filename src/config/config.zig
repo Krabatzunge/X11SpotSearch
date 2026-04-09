@@ -15,14 +15,14 @@ pub const Config = struct {
 };
 
 pub const Location = struct {
-    lang: ?[]const u8,
+    lang: []const u8,
     lon: ?f32,
     lat: ?f32,
     city: ?[]const u8,
 
     pub fn default() Location {
         return .{
-            .lang = null,
+            .lang = "en",
             .lon = null,
             .lat = null,
             .city = null,

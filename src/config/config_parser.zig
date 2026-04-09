@@ -77,13 +77,13 @@ pub const ConfigParser = struct {
                 const owned_value = long_alloc.dupe(u8, value) catch continue;
 
                 if (std.mem.eql(u8, key, "lang")) {
-                    loc_config.lang = owned_value;
+                    loc_config.lang = std.mem.trim(u8, owned_value, &.{'"'});
                 } else if (std.mem.eql(u8, key, "lon")) {
                     loc_config.lon = std.fmt.parseFloat(f32, owned_value) catch continue;
                 } else if (std.mem.eql(u8, key, "lat")) {
                     loc_config.lat = std.fmt.parseFloat(f32, owned_value) catch continue;
                 } else if (std.mem.eql(u8, key, "city")) {
-                    loc_config.city = owned_value;
+                    loc_config.city = std.mem.trim(u8, owned_value, &.{'"'});
                 }
             }
 

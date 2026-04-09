@@ -84,7 +84,7 @@ pub const AsyncCurl = struct {
         const multi = c.curl_multi_init() orelse {
             return error.CurlMultiInitFailed;
         };
-        errdefer c.curl_multi_cleanup(multi);
+        errdefer _ = c.curl_multi_cleanup(multi);
 
         const self = try allocator.create(Self);
         errdefer allocator.destroy(self);
@@ -109,7 +109,7 @@ pub const AsyncCurl = struct {
         self.thread.join();
         self.pending_requests.deinit(self.allocator);
 
-        c.curl_multi_cleanup(self.multi);
+        _ = c.curl_multi_cleanup(self.multi);
         c.curl_global_cleanup();
         self.allocator.destroy(self);
     }
@@ -218,16 +218,17 @@ pub const AsyncCurl = struct {
 
             var msgs_in_queue: c_int = 0;
             while (c.curl_multi_info_read(self.multi, &msgs_in_queue)) |info| {
-                if (info.msg != c.CURLMSG_DONE) continue;
+                const msg = info[0];
+                if (msg.msg != c.CURLMSG_DONE) continue;
 
                 for (active_requests.items, 0..) |item, idx| {
-                    if (item.easy != info.easy_handle) continue;
+                    if (item.easy != msg.easy_handle) continue;
 
                     var status_code: c_long = 0;
                     const getinfo_res = c.curl_easy_getinfo(item.easy, c.CURLINFO_RESPONSE_CODE, &status_code);
                     const http_status: ?u32 = if (getinfo_res == c.CURLE_OK) @intCast(status_code) else null;
 
-                    if (info.data.result == c.CURLE_OK) {
+                    if (msg.data.result == c.CURLE_OK) {
                         if (http_status) |code| {
                             completeRequest(item.req, code, if (code >= 400) error.HttpRequestFailed else null);
                         } else {
@@ -282,7 +283,7 @@ fn completeRequest(req: *CurlRequest, status_code: ?u32, err: ?anyerror) void {
     req.cond.signal();
 }
 
-fn writeCallback(data: [*c]const u8, size: usize, nmemb: usize, userp: ?*anyopaque) callconv(.C) usize {
+fn writeCallback(data: [*c]const u8, size: usize, nmemb: usize, userp: ?*anyopaque) callconv(.c) usize {
     const req_ptr = userp orelse return 0;
     const req: *CurlRequest = @ptrCast(@alignCast(req_ptr));
     const bytes = size * nmemb;

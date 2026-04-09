@@ -14,6 +14,7 @@ const WidgetManager = @import("widgets/widget_manager.zig").WidgetManager;
 const Config = @import("config/config.zig").Config;
 const ConfigParser = @import("config/config_parser.zig").ConfigParser;
 const network = @import("network.zig");
+const geo_loc_extract = @import("network/parsers/geo_location.zig");
 
 pub fn main() !void {
     const mode = mode_config.parse();
@@ -65,7 +66,8 @@ fn spawnOneshot() void {
 }
 
 fn runLauncher(config: Config, conn: *c.xcb_connection_t, screen: *c.xcb_screen_t) !void {
-    _ = config;
+    var active_loc = config.loc;
+
     const x: i16 = @intCast(@divTrunc(@as(i32, screen.*.width_in_pixels) - constants.WIN_WIDTH, 2));
     const y: i16 = @intCast(@divTrunc(@as(i32, screen.*.height_in_pixels) - @as(i32, @intFromFloat(constants.SEARCH_BAR_HEIGHT)), 3));
 
@@ -107,10 +109,25 @@ fn runLauncher(config: Config, conn: *c.xcb_connection_t, screen: *c.xcb_screen_
     defer xkb.deinit();
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
+    defer std.debug.assert(gpa.deinit() == .ok);
     const g_alloc = gpa.allocator();
     var net = try network.AsyncCurl.init(g_alloc);
     defer net.deinit();
+
+    var loc_req: ?*network.CurlRequest = null;
+    defer if (loc_req) |req| {
+        net.release(req);
+    };
+    if (config.loc.lat == null and config.loc.lon == null) {
+        if (config.loc.city) |city| {
+            var loc_req_buf: [128]u8 = undefined;
+            const loc_req_url: ?[]const u8 = std.fmt.bufPrint(&loc_req_buf, "https://geocoding-api.open-meteo.com/v1/search?name={s}&count=1&language={s}&format=json", .{ city, config.loc.lang }) catch null;
+            if (loc_req_url) |url| {
+                std.debug.print("Fetching geolocation based on city: {s}\n", .{city});
+                loc_req = try net.fetch(url);
+            }
+        }
+    }
 
     var renderer = try Renderer.init(conn, screen, win, visual, constants.WIN_WIDTH, constants.SEARCH_BAR_HEIGHT);
     defer renderer.deinit();
@@ -159,6 +176,28 @@ fn runLauncher(config: Config, conn: *c.xcb_connection_t, screen: *c.xcb_screen_
 
     while (true) {
         _ = c.poll(&fds, 2, -1);
+
+        if (loc_req) |req| {
+            const loc_res = net.try_value(req) catch |err| blk: {
+                std.debug.print("Geolocation request failed before parsing: {}\n", .{err});
+                net.release(req);
+                loc_req = null;
+                break :blk null;
+            };
+            if (loc_res) |res| {
+                const p_loc: ?geo_loc_extract.GeoResult = geo_loc_extract.extract_geo_location(g_alloc, res) catch |err| blk: {
+                    std.debug.print("Failed to extract geolocation from response: {}\n", .{err});
+                    break :blk null;
+                };
+                if (p_loc) |loc| {
+                    active_loc.lat = loc.latitude;
+                    active_loc.lon = loc.longitude;
+                    std.debug.print("Resolved user location to: lat {d} lon {d}\n", .{ loc.latitude, loc.longitude });
+                }
+                net.release(req);
+                loc_req = null;
+            }
+        }
 
         if (fds[1].revents & c.POLLIN != 0) {
             var expirations: u64 = 0;
