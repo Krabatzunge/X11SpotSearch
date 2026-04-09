@@ -13,4 +13,5 @@ pub const c = @cImport({
     @cInclude("librsvg/rsvg.h");
     @cInclude("sys/timerfd.h");
     @cInclude("time.h");
+    @cInclude("curl/curl.h");
 });

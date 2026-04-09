@@ -23,6 +23,7 @@ pub fn build(b: *std.Build) void {
     exe.linkSystemLibrary("cairo");
     exe.linkSystemLibrary("pangocairo");
     exe.linkSystemLibrary("librsvg-2.0");
+    exe.linkSystemLibrary("curl");
     exe.linkLibC();
 
     b.installArtifact(exe);

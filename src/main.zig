@@ -13,6 +13,7 @@ const icon_mod = @import("icons/icon.zig");
 const WidgetManager = @import("widgets/widget_manager.zig").WidgetManager;
 const Config = @import("config/config.zig").Config;
 const ConfigParser = @import("config/config_parser.zig").ConfigParser;
+const network = @import("network.zig");
 
 pub fn main() !void {
     const mode = mode_config.parse();
@@ -104,6 +105,12 @@ fn runLauncher(config: Config, conn: *c.xcb_connection_t, screen: *c.xcb_screen_
 
     var xkb = try Xkb.init(conn);
     defer xkb.deinit();
+
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const g_alloc = gpa.allocator();
+    var net = try network.AsyncCurl.init(g_alloc);
+    defer net.deinit();
 
     var renderer = try Renderer.init(conn, screen, win, visual, constants.WIN_WIDTH, constants.SEARCH_BAR_HEIGHT);
     defer renderer.deinit();
