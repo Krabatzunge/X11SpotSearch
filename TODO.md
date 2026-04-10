@@ -11,7 +11,9 @@
   - [x] Time Widget
   - [x] Math Widget
     - [ ] Add different system support: binary, hex, ..
-  - [ ] Weather
+  - [x] Weather
+    - [ ] Parse text after "weather" and use it as city entry for weather lookup at non default places
+    - [ ] Currently can not load weather when widget gets loaded before location resolving is completed
   - [x] Date
   - [ ] Converter
 - [x] **Specify search**: \#name for only searching with names, \#category for categories, etc.
@@ -28,6 +30,8 @@
 
 - [x] **Icon Cache hit** Desktop files without icons are constantly triggering research (expensive) as the cache is on the default application icon instead of their application name
 - [x] **Add X- Category parsing**: parse for X- categories to add custom category support
+- [ ] **Add .xpm icon support**
+- [ ] **Improve performance** by offloading either rendering or desktop file loading into other thread
 
 ## Fixes
 

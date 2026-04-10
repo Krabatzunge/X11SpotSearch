@@ -10,8 +10,6 @@ const Icon = @import("icon_struct.zig").Icon;
 pub const IconModule = struct {
     icon_cache: IconCache,
     icon_discov: IconDiscover,
-    /// Maps icon name -> resolved absolute path, or null if discovery failed.
-    /// Prevents repeated expensive filesystem searches for the same icon name.
     name_cache: std.StringHashMap(?[]const u8),
     name_arena: std.heap.ArenaAllocator,
 
@@ -39,11 +37,7 @@ pub const IconModule = struct {
         }
     }
 
-    /// Resolve an icon name lazily.  Discovery result is cached so that
-    /// subsequent frames for the same icon name skip the filesystem search.
-    /// On miss the pre-computed `fallback` embedded icon is used instead.
     fn loadNameIcon(self: *IconModule, icon_name: []const u8, fallback: EmbeddedIcons, size: u16, color: Color) ?*c.cairo_surface_t {
-        // Fast path: we've already run discovery for this name.
         if (self.name_cache.get(icon_name)) |maybe_path| {
             if (maybe_path) |path| {
                 return self.loadPathIcon(path, size);
@@ -53,12 +47,9 @@ pub const IconModule = struct {
             }
         }
 
-        // First encounter: run discovery and store the result.
         const resolved = self.icon_discov.getIconFromPath(icon_name);
 
-        // Own the key string so the map entry outlives this call.
         const owned_name = self.name_arena.allocator().dupe(u8, icon_name) catch {
-            // Allocation failure: use result directly without caching.
             if (resolved) |p| return self.loadPathIcon(p, size);
             return self.loadEmbeddedIcon(fallback, color, size);
         };

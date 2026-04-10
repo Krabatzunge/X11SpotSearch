@@ -14,6 +14,13 @@ pub const Icons = enum {
     DefCatSettings,
     DefCatSystem,
     DefCatUtility,
+    WeatherSun,
+    WeatherCloudy,
+    WeatherFog,
+    WeatherRain,
+    WeatherSnow,
+    WeatherThunder,
+    WeatherWind,
 
     const IconEntry = struct { tag: Icons, data: []const u8, id: []const u8 };
 
@@ -31,6 +38,13 @@ pub const Icons = enum {
         .{ .tag = .DefCatSettings, .data = @embedFile("./assets/icons/default-categories/settings.svg"), .id = "icons.def.cat.settings" },
         .{ .tag = .DefCatSystem, .data = @embedFile("./assets/icons/default-categories/system.svg"), .id = "icons.def.cat.system" },
         .{ .tag = .DefCatUtility, .data = @embedFile("./assets/icons/default-categories/utility.svg"), .id = "icons.def.cat.utility" },
+        .{ .tag = .WeatherSun, .data = @embedFile("./assets/icons/weather/sun.svg"), .id = "icons.weather.sun" },
+        .{ .tag = .WeatherCloudy, .data = @embedFile("./assets/icons/weather/cloudy.svg"), .id = "icons.weather.cloudy" },
+        .{ .tag = .WeatherFog, .data = @embedFile("./assets/icons/weather/fog.svg"), .id = "icons.weather.fog" },
+        .{ .tag = .WeatherRain, .data = @embedFile("./assets/icons/weather/rain.svg"), .id = "icons.weather.rain" },
+        .{ .tag = .WeatherSnow, .data = @embedFile("./assets/icons/weather/snow.svg"), .id = "icons.weather.snow" },
+        .{ .tag = .WeatherThunder, .data = @embedFile("./assets/icons/weather/thunder.svg"), .id = "icons.weather.thunder" },
+        .{ .tag = .WeatherWind, .data = @embedFile("./assets/icons/weather/wind.svg"), .id = "icons.weather.wind" },
     };
 
     // Compile-time safety: ensure every enum variant has exactly one table entry.

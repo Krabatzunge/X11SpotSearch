@@ -141,19 +141,20 @@ pub const Renderer = struct {
             }
         }
 
+        const ctx = RenderContext{
+            .cr = cr,
+            .font_desc_str = font_desc_str,
+            .font_desc_small_str = font_desc_small_str,
+            .text_left = text_left,
+            .icon_mod = icons,
+        };
+
         // Result list
         if (results.len > 0) {
             // Seperator line
             c.cairo_set_source_rgb(cr, selected_bg.r, selected_bg.g, selected_bg.b);
             c.cairo_rectangle(cr, 12.0, constants.SEARCH_BAR_HEIGHT - 1.0, @as(f64, constants.WIN_WIDTH) - 24.0, 1.0);
             c.cairo_fill(cr);
-
-            const ctx = RenderContext{
-                .cr = cr,
-                .font_desc_str = font_desc_str,
-                .font_desc_small_str = font_desc_small_str,
-                .text_left = text_left,
-            };
 
             //const default_icon = icons.loadEmbeddedIcon(Icons.DefaultApplication, colors.fg, constants.ICON_SIZE);
             for (results, 0..) |result, i| {
@@ -176,14 +177,7 @@ pub const Renderer = struct {
             c.cairo_rectangle(cr, 12.0, widget_sep_y, @as(f64, constants.WIN_WIDTH) - 24.0, 1.0);
             c.cairo_fill(cr);
 
-            const widget_ctx = RenderContext{
-                .cr = cr,
-                .font_desc_str = font_desc_str,
-                .font_desc_small_str = font_desc_small_str,
-                .text_left = text_left,
-            };
-
-            w.draw(w.ctx, widget_ctx, widget_sep_y + 1.0, search_text);
+            w.draw(w.ctx, ctx, widget_sep_y + 1.0, search_text);
         }
 
         c.cairo_surface_flush(self.back_surface);

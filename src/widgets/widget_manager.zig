@@ -7,6 +7,9 @@ const TimeWidget = @import("time_widget.zig").TimeWidget;
 const CalcWidget = @import("calc_widget.zig").CalcWidget;
 const CalcDetector = @import("calc_widget.zig").CalcDetector;
 const RenderContext = @import("../draw_utils/context.zig").RenderContext;
+const WeatherWidget = @import("weather/widget.zig").WeatherWidget;
+const AsyncCurl = @import("../network.zig").AsyncCurl;
+const config_structs = @import("../config/config.zig");
 
 const WidgetEntry = struct {
     detector: Detector,
@@ -20,9 +23,19 @@ pub const WidgetManager = struct {
 
     active_widget: ?Widget,
 
-    pub fn init(allocator: std.mem.Allocator) !WidgetManager {
-        var arena = std.heap.ArenaAllocator.init(allocator);
-        const alloc = arena.allocator();
+    pub fn init(allocator: std.mem.Allocator) WidgetManager {
+        return .{
+            .arena = std.heap.ArenaAllocator.init(allocator),
+            .allocator = allocator,
+            .entries = &.{},
+            .active_widget = null,
+        };
+    }
+
+    pub fn setup(self: *WidgetManager, net: *AsyncCurl, config: config_structs.Config, active_loc: *config_structs.Location) !void {
+        _ = config;
+
+        const alloc = self.arena.allocator();
 
         const date_ptr = try alloc.create(DateWidget);
         date_ptr.* = DateWidget.create();
@@ -39,20 +52,24 @@ pub const WidgetManager = struct {
         const calc_det = try alloc.create(CalcDetector);
         calc_det.* = CalcDetector.create();
 
-        const entries = try alloc.alloc(WidgetEntry, 3);
-        entries[0] = .{ .detector = date_det.asDetector(), .widget = date_ptr.asWidget() };
-        entries[1] = .{ .detector = time_det.asDetector(), .widget = time_ptr.asWidget() };
-        entries[2] = .{ .detector = calc_det.asDetector(), .widget = calc_ptr.asWidget() };
+        const weather_ptr = try alloc.create(WeatherWidget);
+        weather_ptr.* = WeatherWidget.create(net, active_loc, alloc);
+        const weather_det = try alloc.create(KeywordDetector);
+        weather_det.* = KeywordDetector.create(WeatherWidget.getId());
 
-        return .{
-            .arena = arena,
-            .allocator = allocator,
-            .entries = entries,
-            .active_widget = null,
-        };
+        self.entries = try alloc.alloc(WidgetEntry, 4);
+        self.entries[0] = .{ .detector = date_det.asDetector(), .widget = date_ptr.asWidget() };
+        self.entries[1] = .{ .detector = time_det.asDetector(), .widget = time_ptr.asWidget() };
+        self.entries[2] = .{ .detector = calc_det.asDetector(), .widget = calc_ptr.asWidget() };
+        self.entries[3] = .{ .detector = weather_det.asDetector(), .widget = weather_ptr.asWidget() };
     }
 
     pub fn deinit(self: *WidgetManager) void {
+        for (self.entries) |entry| {
+            entry.widget.unload(entry.widget.ctx) catch {
+                std.debug.print("Failed to unload widget\n", .{});
+            };
+        }
         self.arena.deinit();
     }
 

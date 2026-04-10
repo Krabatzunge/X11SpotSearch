@@ -140,7 +140,8 @@ fn runLauncher(config: Config, conn: *c.xcb_connection_t, screen: *c.xcb_screen_
     var icons = try icon_mod.IconModule.init(std.heap.page_allocator);
     defer icons.deinit();
 
-    var widget_manager = try WidgetManager.init(std.heap.page_allocator);
+    var widget_manager = WidgetManager.init(std.heap.page_allocator);
+    try widget_manager.setup(net, config, &active_loc);
     defer widget_manager.deinit();
 
     var search_buf: [256]u8 = undefined;
