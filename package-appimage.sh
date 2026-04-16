@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 APP_NAME="X11SpotSearch"
@@ -18,6 +18,17 @@ mkdir -p "${APPDIR}/usr/share/icons/hicolor/256x256/apps"
 
 # Copy the binary
 cp "zig-out/bin/${APP_NAME}" "${APPDIR}/usr/bin/"
+
+# On NixOS the ELF interpreter points into /nix/store which won't exist on
+# other systems.  Patch it to the standard FHS path so the AppImage is portable.
+if command -v patchelf &>/dev/null; then
+  INTERP="$(readelf -l "${APPDIR}/usr/bin/${APP_NAME}" 2>/dev/null | grep 'interpreter:' | sed 's/.*: \(.*\)]/\1/')"
+  if [[ "$INTERP" == /nix/store/* ]]; then
+    echo "  Patching ELF interpreter for portability"
+    patchelf --set-interpreter /lib64/ld-linux-x86-64.so.2 "${APPDIR}/usr/bin/${APP_NAME}"
+    patchelf --set-rpath '$ORIGIN/../lib' "${APPDIR}/usr/bin/${APP_NAME}"
+  fi
+fi
 
 # Copy the .desktop file
 cp "${APP_NAME}.desktop" "${APPDIR}/"
@@ -63,6 +74,13 @@ for dir in /usr/lib/${ARCH}-linux-gnu/pango /usr/lib/pango /usr/lib64/pango; do
     break
   fi
 done
+# NixOS: try pkg-config
+if [ -z "${PANGO_LIB_DIR}" ] && command -v pkg-config &>/dev/null; then
+  pango_libdir="$(pkg-config --variable=libdir pangocairo 2>/dev/null || true)"
+  if [ -n "$pango_libdir" ] && [ -d "$pango_libdir/pango" ]; then
+    PANGO_LIB_DIR="$pango_libdir/pango"
+  fi
+fi
 if [ -n "${PANGO_LIB_DIR}" ]; then
   echo "  Bundling Pango modules from ${PANGO_LIB_DIR}"
   cp -rL "${PANGO_LIB_DIR}" "${APPDIR}/usr/lib/" 2>/dev/null || true
@@ -76,6 +94,13 @@ for dir in /usr/lib/${ARCH}-linux-gnu/gdk-pixbuf-2.0 /usr/lib/gdk-pixbuf-2.0 /us
     break
   fi
 done
+# NixOS: try pkg-config
+if [ -z "${GDK_PIXBUF_DIR}" ] && command -v pkg-config &>/dev/null; then
+  gdk_libdir="$(pkg-config --variable=libdir gdk-pixbuf-2.0 2>/dev/null || true)"
+  if [ -n "$gdk_libdir" ] && [ -d "$gdk_libdir/gdk-pixbuf-2.0" ]; then
+    GDK_PIXBUF_DIR="$gdk_libdir/gdk-pixbuf-2.0"
+  fi
+fi
 if [ -n "${GDK_PIXBUF_DIR}" ]; then
   echo "  Bundling GDK-Pixbuf loaders from ${GDK_PIXBUF_DIR}"
   cp -rL "${GDK_PIXBUF_DIR}" "${APPDIR}/usr/lib/" 2>/dev/null || true
@@ -83,8 +108,6 @@ fi
 
 echo "=== Creating AppRun ==="
 
-# AppRun script: sets up the environment so bundled libraries and
-# resources are found before system ones.
 cat >"${APPDIR}/AppRun" <<'APPRUN_EOF'
 #!/bin/bash
 SELF_DIR="$(dirname "$(readlink -f "$0")")"

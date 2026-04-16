@@ -16,8 +16,6 @@ const Icons = @import("assets.zig").Icons;
 const Color = colors.Color;
 
 pub const Renderer = struct {
-    surface: *c.cairo_surface_t,
-    cr: *c.cairo_t,
     back_surface: *c.cairo_surface_t,
     back_cr: *c.cairo_t,
     width: u16,
@@ -37,12 +35,8 @@ pub const Renderer = struct {
     pub const icon_padding: f64 = 8.0;
     pub const text_left: f64 = padding + @as(f64, @floatFromInt(constants.ICON_SIZE)) + icon_padding;
 
-    pub fn init(conn: *c.xcb_connection_t, screen: *c.xcb_screen_t, win: u32, visual: *c.xcb_visualtype_t, width: u16, height: u16) !Renderer {
+    pub fn init(width: u16, height: u16) !Renderer {
         const max_height: c_int = @intCast(utils.calcHeight(constants.MAX_RESULTS, true));
-
-        const surface = c.cairo_xcb_surface_create(conn, win, visual, width, max_height) orelse return error.CairoSurfaceFailed;
-        errdefer c.cairo_surface_destroy(surface);
-        const cr = c.cairo_create(surface) orelse return error.CairoCreateFailed;
 
         const back_surface = c.cairo_image_surface_create(c.CAIRO_FORMAT_ARGB32, width, max_height) orelse return error.CairoSurfaceFailed;
         errdefer c.cairo_surface_destroy(back_surface);
@@ -53,20 +47,15 @@ pub const Renderer = struct {
         c.cairo_font_options_set_antialias(font_opts, c.CAIRO_ANTIALIAS_SUBPIXEL);
         c.cairo_set_font_options(back_cr, font_opts);
 
-        _ = screen;
-
-        return .{ .surface = surface, .cr = cr, .width = width, .height = height, .back_surface = back_surface, .back_cr = back_cr };
+        return .{ .width = width, .height = height, .back_surface = back_surface, .back_cr = back_cr };
     }
 
     pub fn deinit(self: *Renderer) void {
-        c.cairo_destroy(self.cr);
-        c.cairo_surface_destroy(self.surface);
         c.cairo_destroy(self.back_cr);
         c.cairo_surface_destroy(self.back_surface);
     }
 
-    pub fn draw(self: *Renderer, search_text: []const u8, search_tag: SearchTag, results: []const Result, icons: *icon_mod.IconModule, cursor_visible: bool, widget: ?Widget) void {
-        const xcb_cr = self.cr;
+    pub fn draw(self: *Renderer, target_cr: ?*c.cairo_t, search_text: []const u8, search_tag: SearchTag, results: []const Result, icons: *icon_mod.IconModule, cursor_visible: bool, widget: ?Widget) void {
         const cr = self.back_cr;
         const width = self.width;
         const height = self.height;
@@ -182,17 +171,17 @@ pub const Renderer = struct {
 
         c.cairo_surface_flush(self.back_surface);
 
-        c.cairo_set_operator(xcb_cr, c.CAIRO_OPERATOR_SOURCE);
-        c.cairo_set_source_surface(xcb_cr, self.back_surface, 0, 0);
-        c.cairo_paint(xcb_cr);
-        c.cairo_surface_flush(self.surface);
+        c.cairo_set_operator(target_cr, c.CAIRO_OPERATOR_SOURCE);
+        c.cairo_set_source_surface(target_cr, self.back_surface, 0, 0);
+        c.cairo_paint(target_cr);
+        c.cairo_surface_flush(c.cairo_get_target(target_cr));
     }
 
     pub fn resizeWindow(self: *Renderer, conn: *c.xcb_connection_t, win: u32, result_count: usize, has_widget: bool) void {
         const new_height = utils.calcHeight(result_count, has_widget);
         const values = [_]u32{@as(u32, new_height)};
         _ = c.xcb_configure_window(conn, win, c.XCB_CONFIG_WINDOW_HEIGHT, &values);
-        c.cairo_xcb_surface_set_size(self.surface, self.width, @intCast(new_height));
+        // c.cairo_xcb_surface_set_size(self.back_surface, self.width, @intCast(new_height));
         self.height = @intCast(new_height);
     }
 };

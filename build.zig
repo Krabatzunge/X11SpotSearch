@@ -14,17 +14,46 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
-    exe.linkSystemLibrary("xcb");
-    exe.linkSystemLibrary("xcb-icccm");
-    exe.linkSystemLibrary("xcb-ewmh");
-    exe.linkSystemLibrary("xcb-xkb");
+    const enable_x11 = b.option(bool, "x11", "Enable X11 backend") orelse true;
+    const enable_wayland = b.option(bool, "wayland", "Enable Wayland backend") orelse true;
+
+    // X11 Libraries
+    if (enable_x11) {
+        exe.linkSystemLibrary("xcb");
+        exe.linkSystemLibrary("xcb-icccm");
+        exe.linkSystemLibrary("xcb-ewmh");
+        exe.linkSystemLibrary("xcb-xkb");
+        exe.linkSystemLibrary("xkbcommon");
+        exe.linkSystemLibrary("xkbcommon-x11");
+    }
+
+    // Wayland libraries
+    if (enable_wayland) {
+        exe.linkSystemLibrary("wayland-client");
+
+        exe.addSystemIncludePath(b.path("src/wayland/generated"));
+        exe.addCSourceFile(.{
+            .file = b.path("src/wayland/generated/wlr-layer-shell-unstable-v1-client-protocol.c"),
+            .flags = &.{"-I", "src/wayland/generated"},
+        });
+        exe.addCSourceFile(.{
+            .file = b.path("src/wayland/generated/xdg-shell-client-protocol.c"),
+            .flags = &.{"-I", "src/wayland/generated"},
+        });
+    }
+
+    // Shared libraries
     exe.linkSystemLibrary("xkbcommon");
-    exe.linkSystemLibrary("xkbcommon-x11");
     exe.linkSystemLibrary("cairo");
     exe.linkSystemLibrary("pangocairo");
     exe.linkSystemLibrary("librsvg-2.0");
     exe.linkSystemLibrary("curl");
     exe.linkLibC();
+
+    const options = b.addOptions();
+    options.addOption(bool, "enable_x11", enable_x11);
+    options.addOption(bool, "enable_wayland", enable_wayland);
+    exe.root_module.addOptions("build_options", options);
 
     b.installArtifact(exe);
 

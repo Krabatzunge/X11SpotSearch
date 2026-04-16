@@ -103,7 +103,7 @@ pub const DesktopScanner = struct {
         defer walker.deinit();
 
         while (try walker.next()) |entry| {
-            if (entry.kind != .file) continue;
+            if (entry.kind != .file and entry.kind != .sym_link) continue;
             if (!std.mem.endsWith(u8, entry.basename, ".desktop")) continue;
 
             const full_path = try std.fmt.allocPrint(self.arena.allocator(), "{s}/{s}", .{ dir_path, entry.path });
@@ -206,9 +206,7 @@ pub const DesktopScanner = struct {
         return entry;
     }
 
-    /// Classify the icon without touching the filesystem.  Actual path
-    /// resolution for named icons is deferred to `IconModule.loadIcon` at
-    /// render time so that scanning stays fast.
+    /// Classify the icon without touching the filesystem.
     fn determineIcon(name: ?[]const u8, main_cat: []const u8) Icon {
         const fallback = constants.MAIN_CATEGORIES.get(main_cat) orelse constants.DEFAULT_APPLICATION_ICON;
         if (name) |n| {
