@@ -14,9 +14,39 @@ A Spotlight-like application launcher for X11 environments. It combines a fuzzy 
 - **Text Rendering**: Utilizes Cairo and Pango for text rendering.
 - **AppImage Support**: Includes a build script (`package-appimage.sh`) to bundle the application and its shared library dependencies into a portable AppImage.
 
-## Prerequisites
+## Platform Support
 
-To build from source, you need **Zig** (version >= 0.15) and the following C development libraries installed:
+X11SpotSearch supports both **X11** and **Wayland** display servers. The backend is selected automatically at runtime.
+
+## Installation & Building
+
+### NixOS (recommended for Nix users)
+
+The project includes a Nix flake. No manual dependency management needed.
+
+**Run directly (without installing):**
+```bash
+nix run github:Krabatzunge/X11SpotSearch/wayland
+```
+
+**Install to your profile:**
+```bash
+nix profile install github:Krabatzunge/X11SpotSearch/wayland
+```
+
+**Build locally:**
+```bash
+nix build .#X11SpotSearch
+./result/bin/X11SpotSearch
+```
+
+> The Nix flake handles all dependencies and generates required Wayland protocol files automatically.
+
+### Other Linux Distros (Ubuntu, Fedora, Arch, etc.)
+
+#### Prerequisites
+
+You need **Zig** (version >= 0.15.2) and the following C development libraries:
 
 - `libxcb-dev` / `xcb`
 - `libxcb-icccm4-dev` / `xcb-icccm`
@@ -27,28 +57,39 @@ To build from source, you need **Zig** (version >= 0.15) and the following C dev
 - `libcairo2-dev` / `cairo`
 - `libpango1.0-dev` / `pangocairo`
 - `librsvg2-dev` / `librsvg`
+- `libwayland-dev` / `wayland` (for Wayland support)
+- `wayland-protocols` (for Wayland support)
 
-*(Note: Package names are based on Debian/Ubuntu and may vary on distributions like Arch or Fedora.)*
+*(Package names are Debian/Ubuntu-based and may vary on other distributions.)*
 
-## Building
+For Wayland support, you also need to generate the protocol files:
+```bash
+mkdir -p src/wayland/generated
+wayland-scanner client-header /usr/share/wlr-protocols/unstable/wlr-layer-shell-unstable-v1.xml src/wayland/generated/wlr-layer-shell-unstable-v1-client-protocol.h
+wayland-scanner private-code  /usr/share/wlr-protocols/unstable/wlr-layer-shell-unstable-v1.xml src/wayland/generated/wlr-layer-shell-unstable-v1-client-protocol.c
+wayland-scanner client-header /usr/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml src/wayland/generated/xdg-shell-client-protocol.h
+wayland-scanner private-code  /usr/share/wayland-protocols/stable/xdg-shell/xdg-shell.xml src/wayland/generated/xdg-shell-client-protocol.c
+```
 
-To build the project natively using the Zig build system:
+#### Build from source
 
 ```bash
 zig build -Doptimize=ReleaseFast
 ```
 
-The resulting binary will be placed in `zig-out/bin/X11SpotSearch`.
+The binary will be placed in `zig-out/bin/X11SpotSearch`.
 
-### Packaging as an AppImage
+#### Packaging as an AppImage
 
-To build the executable and package it into a self-contained AppImage:
+To bundle the application into a portable, self-contained AppImage:
 
 ```bash
 ./package-appimage.sh
 ```
 
-This script will compile the application, download `appimagetool` if necessary, bundle the required dynamic libraries, and produce an `X11SpotSearch-x86_64.AppImage` in the project root.
+This compiles the application, downloads `appimagetool` if necessary, bundles required shared libraries, and produces `X11SpotSearch-x86_64.AppImage` in the project root.
+
+> **Note:** AppImages built on NixOS are automatically patched for portability and will work on standard Linux distributions. The AppImage is the recommended way to distribute to non-NixOS users.
 
 ## Usage
 

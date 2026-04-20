@@ -5,12 +5,18 @@
 - [ ] **Scrolling**: Arrow keys past max_results scrolls the full list
 - [ ] **Clipboard / text selection**: Ctrl + A/C/V via XCB selections
 - [ ] **Multi-monitor**: xcb-randr to center on active output
-- [ ] **Wayland support**: wlr-layer-shell
-- [ ] **Config file**: Colors, fonts, hotkey, max results from file
+- [x] **Wayland support**: wlr-layer-shell
+- [x] **Config file**:
+  - [ ] Colors
+  - [ ] Fonts
+  - [ ] hotkey
+  - [ ] max results
+  - [x] Location
 - [ ] **Widgets**: Use "$" to search for widgets -> widgets can also appear in normal search as attachment after the last result item
   - [x] Time Widget
   - [x] Math Widget
     - [ ] Add different system support: binary, hex, ..
+    - [ ] When pressing enter on math widget, copy equation result into clipboard
   - [x] Weather
     - [ ] Parse text after "weather" and use it as city entry for weather lookup at non default places
     - [ ] Currently can not load weather when widget gets loaded before location resolving is completed
@@ -30,8 +36,9 @@
 
 - [x] **Icon Cache hit** Desktop files without icons are constantly triggering research (expensive) as the cache is on the default application icon instead of their application name
 - [x] **Add X- Category parsing**: parse for X- categories to add custom category support
-- [ ] **Add .xpm icon support**
+- [x] **Add .xpm icon support**
 - [ ] **Improve performance** by offloading either rendering or desktop file loading into other thread
+- [x] Improve performance by offloading image loading into other thread making deferred loading to keep real time search up on slower systems
 
 ## Fixes
 

@@ -85,6 +85,12 @@
             # zig build --prefix already installs to $out
             dontInstall = true;
 
+            # Fix the ELF interpreter and patch RPATH so the binary works on NixOS
+            postFixup = ''
+              patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" \
+                $out/bin/X11SpotSearch
+            '';
+
             # Install the .desktop file
             postInstall = ''
               install -Dm644 X11SpotSearch.desktop \

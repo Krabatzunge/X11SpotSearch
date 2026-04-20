@@ -15,6 +15,9 @@ pub fn loadIconFromPath(path: []const u8, icon_size: u16) !*c.cairo_surface_t {
     } else if (std.mem.endsWith(u8, path, ".png")) {
         std.debug.print("Loading png with path: {s}\n", .{path});
         return loadPngFromPath(path_z.ptr, icon_size);
+    } else if (std.mem.endsWith(u8, path, ".xpm")) {
+        std.debug.print("Loading xpm with path: {s}\n", .{path});
+        return loadXpmFromPath(path_z.ptr, icon_size);
     }
 
     return error.NoImageLoaded;
@@ -50,6 +53,52 @@ fn loadPngFromPath(path: [*c]const u8, icon_size: u16) !*c.cairo_surface_t {
 
     c.cairo_surface_destroy(img);
     return scaled;
+}
+
+fn loadXpmFromPath(path: [*c]const u8, icon_size: u16) !*c.cairo_surface_t {
+    const c_size: c_int = @intCast(icon_size);
+    var err: ?*c.GError = null;
+    const preserve_aspect_ratio: c_int = 0;
+    const pixbuf = c.gdk_pixbuf_new_from_file_at_scale(path, c_size, c_size, preserve_aspect_ratio, &err) orelse return error.XpmLoadFailed;
+    defer c.g_object_unref(pixbuf);
+
+    const width = c.gdk_pixbuf_get_width(pixbuf);
+    const height = c.gdk_pixbuf_get_height(pixbuf);
+    const stride = c.gdk_pixbuf_get_rowstride(pixbuf);
+    const pixels = c.gdk_pixbuf_get_pixels(pixbuf);
+    const has_alpha = c.gdk_pixbuf_get_has_alpha(pixbuf) != 0;
+
+    const fmt: c.cairo_format_t = if (has_alpha) c.CAIRO_FORMAT_ARGB32 else c.CAIRO_FORMAT_RGB24;
+
+    const surface = c.cairo_image_surface_create(fmt, width, height) orelse return error.CairoSurfaceFailed;
+    const cr = c.cairo_create(surface);
+    defer c.cairo_destroy(cr);
+
+    const cairo_stride = c.cairo_image_surface_get_stride(surface);
+    const cairo_data = c.cairo_image_surface_get_data(surface);
+    c.cairo_surface_flush(surface);
+
+    var y: c_int = 0;
+    while (y < height) : (y += 1) {
+        var x: c_int = 0;
+        while (x < width) : (x += 1) {
+            const src = pixels + @as(usize, @intCast(y * stride + x * (if (has_alpha) @as(c_int, 4) else @as(c_int, 3))));
+            const dst = cairo_data + @as(usize, @intCast(y * cairo_stride + x * 4));
+
+            const r = src[0];
+            const g = src[1];
+            const b = src[2];
+            const a: u8 = if (has_alpha) src[3] else 0xFF;
+
+            dst[0] = @truncate(@as(u16, b) * a / 255);
+            dst[1] = @truncate(@as(u16, g) * a / 255);
+            dst[2] = @truncate(@as(u16, r) * a / 255);
+            dst[3] = a;
+        }
+    }
+
+    c.cairo_surface_mark_dirty(surface);
+    return surface;
 }
 
 fn loadSvgFromPath(path: [*c]const u8, icon_size: u16) !*c.cairo_surface_t {

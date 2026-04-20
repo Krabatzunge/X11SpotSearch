@@ -144,8 +144,11 @@ fn runLauncher(config: Config, platform: *Platform) !void {
     try scanner.scan();
     std.debug.print("Loaded {} desktop entries\n", .{scanner.entries.items.len});
 
+    const icon_event_fd = try std.posix.eventfd(0, std.os.linux.EFD.CLOEXEC);
+    defer std.posix.close(icon_event_fd);
     var icons = try icon_mod.IconModule.init(std.heap.page_allocator);
     defer icons.deinit();
+    try icons.startLoader(g_alloc, icon_event_fd);
 
     var widget_manager = WidgetManager.init(std.heap.page_allocator);
     try widget_manager.setup(net, config, &active_loc);
@@ -178,6 +181,7 @@ fn runLauncher(config: Config, platform: *Platform) !void {
     var fds = [_]c.struct_pollfd{
         .{ .fd = window_fd, .events = c.POLLIN, .revents = 0 },
         .{ .fd = ctimer_fd, .events = c.POLLIN, .revents = 0 },
+        .{ .fd = icon_event_fd, .events = c.POLLIN, .revents = 0},
     };
 
     var cursor_visible = true;
@@ -185,7 +189,7 @@ fn runLauncher(config: Config, platform: *Platform) !void {
 
     while (!platform.shouldClose()) {
         platform.prePoll();
-        _ = c.poll(&fds, 2, -1);
+        _ = c.poll(&fds, 3, -1);
 
         if (loc_req) |req| {
             const loc_res = net.try_value(req) catch |err| blk: {
@@ -207,6 +211,12 @@ fn runLauncher(config: Config, platform: *Platform) !void {
                 net.release(req);
                 loc_req = null;
             }
+        }
+
+        if (fds[2].revents & c.POLLIN != 0) {
+            var buf: u64 = 0;
+            _ = std.posix.read(icon_event_fd, std.mem.asBytes(&buf)) catch {};
+            needs_redraw = true;
         }
 
         if (fds[1].revents & c.POLLIN != 0) {

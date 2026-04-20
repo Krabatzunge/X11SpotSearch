@@ -11,6 +11,7 @@ pub const c = @cImport({
     @cInclude("sys/timerfd.h");
     @cInclude("time.h");
     @cInclude("string.h");
+    @cInclude("gdk-pixbuf/gdk-pixbuf.h");
 
     // X11
     if (build_options.enable_x11) {

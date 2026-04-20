@@ -6,12 +6,17 @@ const c = @import("../c.zig").c;
 const EmbeddedIcons = @import("../assets.zig").Icons;
 const Color = @import("../colors.zig").Color;
 const Icon = @import("icon_struct.zig").Icon;
+const icon_loader = @import("icon_loader.zig");
+
+const IconLoader = icon_loader.IconLoader;
+const IconRequest = icon_loader.IconRequest;
 
 pub const IconModule = struct {
     icon_cache: IconCache,
     icon_discov: IconDiscover,
     name_cache: std.StringHashMap(?[]const u8),
     name_arena: std.heap.ArenaAllocator,
+    icon_loader: *IconLoader,
 
     pub fn init(allocator: std.mem.Allocator) !IconModule {
         return .{
@@ -19,7 +24,12 @@ pub const IconModule = struct {
             .icon_discov = try IconDiscover.init(allocator),
             .name_cache = std.StringHashMap(?[]const u8).init(allocator),
             .name_arena = std.heap.ArenaAllocator.init(allocator),
+            .icon_loader = undefined,
         };
+    }
+
+    pub fn startLoader(self: *IconModule, g_alloc: std.mem.Allocator, event_fd: std.posix.fd_t) !void {
+        self.icon_loader = try IconLoader.init(g_alloc, &self.icon_cache, event_fd);
     }
 
     pub fn deinit(self: *IconModule) void {
@@ -27,6 +37,7 @@ pub const IconModule = struct {
         self.icon_discov.deinit();
         self.name_cache.deinit();
         self.name_arena.deinit();
+        self.icon_loader.deinit();
     }
 
     pub fn loadIcon(self: *IconModule, icon: Icon, size: u16, color: Color) ?*c.cairo_surface_t {
@@ -43,7 +54,7 @@ pub const IconModule = struct {
                 return self.loadPathIcon(path, size);
             } else {
                 // Known miss — skip straight to the fallback.
-                return self.loadEmbeddedIcon(fallback, color, size);
+                return self.loadEmbeddedIcon(fallback, color, size); 
             }
         }
 
@@ -65,10 +76,16 @@ pub const IconModule = struct {
     pub fn loadPathIcon(self: *IconModule, path: []const u8, size: u16) ?*c.cairo_surface_t {
         var keybuf: [256]u8 = undefined;
         const key = IconCache.generateKeyFromPath(keybuf[0..256], path, size) catch return null;
-        if (self.icon_cache.get(key)) |item| return item;
-        const surface = icon_loading.loadIconFromPath(path, size) catch return null;
-        self.icon_cache.set(key, surface) catch {};
-        return surface;
+        if (self.icon_loader.getCached(key)) |item| return item;
+        self.icon_loader.request(IconRequest{
+            .path = path,
+            .size = size,
+            .key = key,
+        });      
+        return null;
+        //const surface = icon_loading.loadIconFromPath(path, size) catch return null;
+        //self.icon_cache.set(key, surface) catch {};
+        //return surface; //TODO: for icon thread loading return null and send request to thread
     }
 
     pub fn loadEmbeddedIcon(self: *IconModule, icon: EmbeddedIcons, color: Color, size: u16) ?*c.cairo_surface_t {
