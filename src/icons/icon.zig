@@ -14,29 +14,25 @@ const IconRequest = icon_loader.IconRequest;
 pub const IconModule = struct {
     icon_cache: IconCache,
     icon_discov: IconDiscover,
-    name_cache: std.StringHashMap(?[]const u8),
-    name_arena: std.heap.ArenaAllocator,
     icon_loader: *IconLoader,
+    p_alloc: std.mem.Allocator,
 
     pub fn init(allocator: std.mem.Allocator) !IconModule {
         return .{
             .icon_cache = try IconCache.init(allocator),
             .icon_discov = try IconDiscover.init(allocator),
-            .name_cache = std.StringHashMap(?[]const u8).init(allocator),
-            .name_arena = std.heap.ArenaAllocator.init(allocator),
             .icon_loader = undefined,
+            .p_alloc = allocator,
         };
     }
 
     pub fn startLoader(self: *IconModule, g_alloc: std.mem.Allocator, event_fd: std.posix.fd_t) !void {
-        self.icon_loader = try IconLoader.init(g_alloc, &self.icon_cache, event_fd);
+        self.icon_loader = try IconLoader.init(g_alloc, self.p_alloc, &self.icon_cache, &self.icon_discov, event_fd);
     }
 
     pub fn deinit(self: *IconModule) void {
         self.icon_cache.deinit();
         self.icon_discov.deinit();
-        self.name_cache.deinit();
-        self.name_arena.deinit();
         self.icon_loader.deinit();
     }
 
@@ -49,7 +45,7 @@ pub const IconModule = struct {
     }
 
     fn loadNameIcon(self: *IconModule, icon_name: []const u8, fallback: EmbeddedIcons, size: u16, color: Color) ?*c.cairo_surface_t {
-        if (self.name_cache.get(icon_name)) |maybe_path| {
+        if (self.icon_loader.getNameCached(icon_name)) |maybe_path| {
             if (maybe_path) |path| {
                 return self.loadPathIcon(path, size);
             } else {
@@ -58,19 +54,27 @@ pub const IconModule = struct {
             }
         }
 
-        const resolved = self.icon_discov.getIconFromPath(icon_name);
+        self.icon_loader.request(IconRequest{
+            .source = .{ .name = icon_name },
+            .size = size,
+            .key = icon_name,
+        });
 
-        const owned_name = self.name_arena.allocator().dupe(u8, icon_name) catch {
-            if (resolved) |p| return self.loadPathIcon(p, size);
-            return self.loadEmbeddedIcon(fallback, color, size);
-        };
-        self.name_cache.put(owned_name, resolved) catch {};
+        return self.loadEmbeddedIcon(fallback, color, size);
 
-        if (resolved) |p| {
-            return self.loadPathIcon(p, size);
-        } else {
-            return self.loadEmbeddedIcon(fallback, color, size);
-        }
+        //const resolved = self.icon_discov.getIconFromPath(icon_name);
+
+        //const owned_name = self.name_arena.allocator().dupe(u8, icon_name) catch {
+        //    if (resolved) |p| return self.loadPathIcon(p, size);
+        //    return self.loadEmbeddedIcon(fallback, color, size);
+        //};
+        //self.name_cache.put(owned_name, resolved) catch {};
+
+        //if (resolved) |p| {
+        //    return self.loadPathIcon(p, size);
+        //} else {
+        //    return self.loadEmbeddedIcon(fallback, color, size);
+        //}
     }
 
     pub fn loadPathIcon(self: *IconModule, path: []const u8, size: u16) ?*c.cairo_surface_t {
@@ -78,7 +82,7 @@ pub const IconModule = struct {
         const key = IconCache.generateKeyFromPath(keybuf[0..256], path, size) catch return null;
         if (self.icon_loader.getCached(key)) |item| return item;
         self.icon_loader.request(IconRequest{
-            .path = path,
+            .source = .{ .path = path },
             .size = size,
             .key = key,
         });      

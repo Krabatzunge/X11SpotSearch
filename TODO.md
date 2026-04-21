@@ -37,7 +37,7 @@
 - [x] **Icon Cache hit** Desktop files without icons are constantly triggering research (expensive) as the cache is on the default application icon instead of their application name
 - [x] **Add X- Category parsing**: parse for X- categories to add custom category support
 - [x] **Add .xpm icon support**
-- [ ] **Improve performance** by offloading either rendering or desktop file loading into other thread
+- [x] **Improve performance** by offloading either rendering or desktop file loading into other thread
 - [x] Improve performance by offloading image loading into other thread making deferred loading to keep real time search up on slower systems
 
 ## Fixes
