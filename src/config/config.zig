@@ -2,12 +2,14 @@ const c = @import("../c.zig").c;
 
 pub const Config = struct {
     loc: Location,
+    search: Search,
     hotkey_mod: u16, // X11 modifier mask (default Mod4 = Super)
     hotkey_keysym: u32, // XKB keysym for trigger key
 
     pub fn default() Config {
         return .{
             .loc = Location.default(),
+            .search = Search.default(),
             .hotkey_mod = 0x40, // Mod4Mask (Super key)
             .hotkey_keysym = c.XKB_KEY_space,
         };
@@ -27,5 +29,15 @@ pub const Location = struct {
             .lat = null,
             .city = null,
         };
+    }
+};
+
+pub const Search = struct {
+    search_engine: []const u8,
+
+    pub fn default() Search {
+       return .{
+           .search_engine = "https://www.google.com/search?q={s}",
+       }; 
     }
 };

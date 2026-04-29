@@ -3,20 +3,16 @@ const c = @import("../c.zig").c;
 const Color = @import("../colors.zig").Color;
 
 pub fn loadIconFromPath(path: []const u8, icon_size: u16) !*c.cairo_surface_t {
-    std.debug.print("Beginning to load desktop icon: {s}\n", .{path});
     std.fs.cwd().access(path, .{}) catch return error.ImagePathNoneExistent;
 
     var path_buf: [512]u8 = undefined;
     const path_z = std.fmt.bufPrintZ(&path_buf, "{s}", .{path}) catch return error.PathTooLong;
 
     if (std.mem.endsWith(u8, path, ".svg")) {
-        std.debug.print("Loading svg with path: {s}\n", .{path});
         return loadSvgFromPath(path_z.ptr, icon_size);
     } else if (std.mem.endsWith(u8, path, ".png")) {
-        std.debug.print("Loading png with path: {s}\n", .{path});
         return loadPngFromPath(path_z.ptr, icon_size);
     } else if (std.mem.endsWith(u8, path, ".xpm")) {
-        std.debug.print("Loading xpm with path: {s}\n", .{path});
         return loadXpmFromPath(path_z.ptr, icon_size);
     }
 

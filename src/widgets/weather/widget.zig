@@ -79,7 +79,7 @@ pub const WeatherWidget = struct {
 
         const w_text_x = wind_x + wind_size + 4.0;
         var wind_buf: [16]u8 = undefined;
-        const wind_txt = if (self.weather) |weather| std.fmt.bufPrint(&wind_buf, "{d} {s}", .{ weather.current.temperature, weather.units.temperature }) catch "--" else "--";
+        const wind_txt = if (self.weather) |weather| std.fmt.bufPrint(&wind_buf, "{d} {s}", .{ weather.current.wind_speed, weather.units.wind_speed }) catch "--" else "--";
         const wind_txt_size = draw_text.measureText(cr, wind_txt, render_ctx.font_desc_small_str);
         const wind_txt_y = y + (constants.WIDGET_HEIGHT - @as(f64, @floatFromInt(wind_txt_size.h))) / 2.0;
         draw_text.drawText(cr, wind_txt, render_ctx.font_desc_small_str, colors.placeholder, w_text_x, wind_txt_y);

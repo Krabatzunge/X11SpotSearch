@@ -19,6 +19,8 @@ const X11Platform = @import("x11/x11_platform.zig").X11Platform;
 const WaylandPlatform = @import("wayland/wl_platform.zig").WaylandPlatform;
 const platform_mod = @import("platform.zig");
 const Platform = platform_mod.Platform;
+const EmbeddedIcons = @import("assets.zig").Icons;
+const IconStruct = @import("icons/icon_struct.zig").Icon;
 
 pub fn main() !void {
     const run_config = mode_config.parse();
@@ -163,6 +165,7 @@ fn runLauncher(config: Config, platform: *Platform) !void {
     var selected: usize = 0;
     var search_tag: fuzzy_match.SearchTag = .Unspecified;
     var cleaned_search_query: []const u8 = "";
+    var web_search_desc_buf: [256]u8 = undefined;
 
     // Initial draw
     if (platform.beginFrame()) |cr| {
@@ -244,10 +247,21 @@ fn runLauncher(config: Config, platform: *Platform) !void {
                             if (results_count > 0) {
                                 const scored = fuzzy_match.search(scanner.entries.items, search_buf[0..search_len], &scored_buf);
                                 if (selected < scored.entries.len) {
-                                    launcher.launch(scored.entries[selected].entry) catch |err| {
+                                    launcher.launchDesktopEntry(scored.entries[selected].entry) catch |err| {
                                         std.debug.print("Launch failed: {}\n", .{err});
                                     };
                                     return;
+                                }
+                                const attach_select = selected - scored.entries.len;
+                                switch (attach_select) {
+                                    0 => {
+                                        std.debug.print("Opening with engine {s}\n", .{config.search.search_engine});
+                                        launcher.launchWebSearch(cleaned_search_query, config.search.search_engine) catch |err| {
+                                            std.debug.print("Opening browser failed {}\n", .{err});
+                                        };    
+                                        return;
+                                    },
+                                    else => {},
                                 }
                             }
                         },
@@ -257,7 +271,6 @@ fn runLauncher(config: Config, platform: *Platform) !void {
                                 while (search_len > 0 and (search_buf[search_len] & 0xC0) == 0x80)
                                     search_len -= 1;
                                 search_changed = true;
-                                std.debug.print("Search: \"{s}\"\n", .{search_buf[0..search_len]});
                             }
                         },
                         c.XKB_KEY_Up => {
@@ -274,7 +287,6 @@ fn runLauncher(config: Config, platform: *Platform) !void {
                                     @memcpy(search_buf[search_len .. search_len + txt.len], txt);
                                     search_len += txt.len;
                                     search_changed = true;
-                                    std.debug.print("Search: \"{s}\"\n", .{search_buf[0..search_len]});
                                 }
                             }
                         },
@@ -299,6 +311,16 @@ fn runLauncher(config: Config, platform: *Platform) !void {
                                 };
                             }
                             results_count = search_res.entries.len;
+                            if (search_res.entries.len < constants.MAX_RESULTS and fuzzy_match.startsWithTag(cleaned_search_query) == false) {
+                                std.debug.print("Added web search to results\n", .{});
+                                results_buf[search_res.entries.len] = .{
+                                    .name = "Search the web",
+                                    .description = std.fmt.bufPrint(&web_search_desc_buf, "Search the web for: {s}", .{cleaned_search_query}) catch "Search the web", //TODO: add formatting by either using buffer or allocator. Rather need allocator because of lifetime
+                                    .icon = IconStruct.initEmbedded(EmbeddedIcons.Browser),
+                                    .selected = false,
+                                };
+                                results_count += 1;
+                            }
                         } else {
                             cleaned_search_query = "";
                             search_tag = .Unspecified;

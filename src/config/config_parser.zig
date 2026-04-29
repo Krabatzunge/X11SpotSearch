@@ -30,18 +30,24 @@ pub const ConfigParser = struct {
         defer file.close();
 
         const content = file.readToEndAlloc(alloc, 1024 * 64) catch return Config.default();
-        var config = Config.default();
+        return self.parseConfigContent(content);
+    }
 
+    fn parseConfigContent(self: *ConfigParser, content: []const u8) Config {
+        var config = Config.default();
         var line_iter = std.mem.splitScalar(u8, content, '\n');
 
         while (line_iter.next()) |raw_line| {
-            const line = std.mem.trimEnd(u8, raw_line, &.{ '\r', ' ', '\t' });
+            const line = std.mem.trim(u8, raw_line, &.{ '\r', ' ', '\t' });
             if (line.len == 0 or line[0] == '#') continue;
 
             if (line[0] == '[') {
                 const trimmed = std.mem.trim(u8, line, &.{ ' ', '\t' });
                 if (std.mem.eql(u8, trimmed, "[location]")) {
                     config.loc = self.parseLocationPart(&line_iter);
+                } else if (std.mem.eql(u8, trimmed, "[search]")) {
+                    std.debug.print("Starting to parse search config.\n", .{});
+                    config.search = self.parseSearchPart(&line_iter);
                 }
                 continue;
             }
@@ -68,8 +74,11 @@ pub const ConfigParser = struct {
         var loc_config = config_mod.Location.default();
 
         while (line_iter.next()) |raw_line| {
-            const line = std.mem.trimEnd(u8, raw_line, &.{ '\r', ' ', '\t' });
-            if (line.len == 0 or line[0] == '#') continue;
+            const line = std.mem.trim(u8, raw_line, &.{ '\r', ' ', '\t' });
+            if (line.len == 0 or line[0] == '#') {
+                if (nextSectionStarts(line_iter)) break;
+                continue;
+            }
 
             if (std.mem.indexOfScalar(u8, line, '=')) |eq| {
                 const key = std.mem.trimEnd(u8, line[0..eq], &.{ ' ', '\t' });
@@ -87,17 +96,66 @@ pub const ConfigParser = struct {
                 }
             }
 
-            if (line_iter.peek()) |peek_line| {
-                const p_line = std.mem.trimEnd(u8, peek_line, &.{ '\r', ' ', '\t' });
-
-                if (p_line.len > 0) {
-                    if (p_line[0] == '[') {
-                        break;
-                    }
-                }
-            }
+            if (nextSectionStarts(line_iter)) break;
         }
 
         return loc_config;
     }
+
+    fn parseSearchPart(self: *ConfigParser, line_iter: *std.mem.SplitIterator(u8, .scalar)) config_mod.Search {
+        const long_alloc = self.long_arena.allocator();
+        var sear_config = config_mod.Search.default();
+
+        while (line_iter.next()) |raw_line| {
+            const line = std.mem.trim(u8, raw_line, &.{ '\r', ' ', '\t' });
+            if (line.len == 0 or line[0] == '#') {
+                if (nextSectionStarts(line_iter)) break;
+                continue;
+            }
+
+            if (std.mem.indexOfScalar(u8, line, '=')) |eq| {
+                const key = std.mem.trimEnd(u8, line[0..eq], &.{ ' ', '\t' });
+                const value = std.mem.trimStart(u8, line[eq + 1 ..], &.{ ' ', '\t' });
+                const owned_value = long_alloc.dupe(u8, value) catch continue;
+
+                if (std.mem.eql(u8, key, "engine-path")) {
+                    sear_config.search_engine = std.mem.trim(u8, owned_value, &.{'"'});
+                }
+            }
+
+            if (nextSectionStarts(line_iter)) break;
+        }
+
+        return sear_config;
+    }
+
+    fn nextSectionStarts(line_iter: *std.mem.SplitIterator(u8, .scalar)) bool {
+        var lookahead = line_iter.*;
+
+        while (lookahead.next()) |raw_line| {
+            const line = std.mem.trim(u8, raw_line, &.{ '\r', ' ', '\t' });
+            if (line.len == 0 or line[0] == '#') continue;
+            return line[0] == '[';
+        }
+
+        return false;
+    }
 };
+
+test "parseConfigContent handles section transition after blank lines" {
+    var parser = ConfigParser.init(std.testing.allocator);
+    defer parser.deinit();
+
+    const config = parser.parseConfigContent(
+        \\[location]
+        \\lang = "de"
+        \\city = "Berlin"
+        \\
+        \\[search]
+        \\engine-path = "https://search.magmaservices.de?q={s}"
+    );
+
+    try std.testing.expectEqualStrings("de", config.loc.lang);
+    try std.testing.expectEqualStrings("Berlin", config.loc.city.?);
+    try std.testing.expectEqualStrings("https://search.magmaservices.de?q={s}", config.search.search_engine);
+}

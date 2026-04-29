@@ -89,6 +89,10 @@ pub fn fuzzyScore(pattern: []const u8, text: []const u8) ?i32 {
     return score;
 }
 
+pub fn startsWithTag(pattern: []const u8) bool {
+    return pattern[0] == '#' or pattern[0] == '@' or pattern[0] == '$';
+}
+
 /// Specifies a SearchTag from the pattern and writes a tag free pattern to a buffer
 /// Returns Unspecified (search across all tags) when no tag was found
 fn extractSearchTag(pattern: []const u8) struct { tag: SearchTag, cleaned: []const u8 } {

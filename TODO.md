@@ -31,6 +31,8 @@
   - [x] Default category icons (Desktop entry already supports categories)
 - [x] **Make Window transparent**: add window transparency for rounded container
 - [ ] **App Actions**: Use @ to search for app actions
+- [ ] **Attachments**:
+  - [x] "Search the web" when no result is found
 
 ## Improvements
 
@@ -39,7 +41,7 @@
 - [x] **Add .xpm icon support**
 - [x] **Improve performance** by offloading either rendering or desktop file loading into other thread
 - [x] Improve performance by offloading image loading into other thread making deferred loading to keep real time search up on slower systems
-- [ ] Store paths from name -> path resolution in file in ~/.cache/spot-sear in order to prevent reresolution on every opening to improve icon loading delay
+- [x] Store paths from name -> path resolution in file in ~/.cache/spot-sear in order to prevent reresolution on every opening to improve icon loading delay
 
 ## Fixes
 
