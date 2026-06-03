@@ -245,7 +245,7 @@ fn runLauncher(config: Config, platform: *Platform) !void {
                         c.XKB_KEY_Return, c.XKB_KEY_KP_Enter => {
                             std.debug.print("Enter pressed: \"{s}\"\n", .{search_buf[0..search_len]});
                             if (results_count > 0) {
-                                const scored = fuzzy_match.search(scanner.entries.items, search_buf[0..search_len], &scored_buf);
+                                const scored = fuzzy_match.search(scanner.entries.items, config.search.engines, search_buf[0..search_len], &scored_buf);
                                 if (selected < scored.entries.len) {
                                     launcher.launchDesktopEntry(scored.entries[selected].entry) catch |err| {
                                         std.debug.print("Launch failed: {}\n", .{err});
@@ -275,11 +275,9 @@ fn runLauncher(config: Config, platform: *Platform) !void {
                         },
                         c.XKB_KEY_Up => {
                             if (selected > 0) selected -= 1;
-                            std.debug.print("Going up, selected: {}\n", .{selected});
                         },
                         c.XKB_KEY_Down => {
                             if (results_count > 0 and selected < results_count - 1) selected += 1;
-                            std.debug.print("Going down, selected: {}\n", .{selected});
                         },
                         else => {
                             if (key.text) |txt| {
@@ -299,7 +297,7 @@ fn runLauncher(config: Config, platform: *Platform) !void {
                         selected = 0;
                         if (search_len > 0) {
                             widget_manager.determineWidget(search_buf[0..search_len]);
-                            const search_res = fuzzy_match.search(scanner.entries.items, search_buf[0..search_len], &scored_buf);
+                            const search_res = fuzzy_match.search(scanner.entries.items, config.search.engines, search_buf[0..search_len], &scored_buf);
                             search_tag = search_res.tag;
                             cleaned_search_query = search_res.query;
                             for (search_res.entries, 0..) |s, idx| {
@@ -312,11 +310,10 @@ fn runLauncher(config: Config, platform: *Platform) !void {
                             }
                             results_count = search_res.entries.len;
                             if (search_res.entries.len < constants.MAX_RESULTS and fuzzy_match.startsWithTag(cleaned_search_query) == false) {
-                                std.debug.print("Added web search to results\n", .{});
                                 results_buf[search_res.entries.len] = .{
                                     .name = "Search the web",
                                     .description = std.fmt.bufPrint(&web_search_desc_buf, "Search the web for: {s}", .{cleaned_search_query}) catch "Search the web", //TODO: add formatting by either using buffer or allocator. Rather need allocator because of lifetime
-                                    .icon = IconStruct.initEmbedded(EmbeddedIcons.Browser),
+                                    .icon = IconStruct.initEmbedded(EmbeddedIcons.Browser), // TODO: chage web search icon color to Mauve
                                     .selected = false,
                                 };
                                 results_count += 1;

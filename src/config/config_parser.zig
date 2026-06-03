@@ -46,7 +46,6 @@ pub const ConfigParser = struct {
                 if (std.mem.eql(u8, trimmed, "[location]")) {
                     config.loc = self.parseLocationPart(&line_iter);
                 } else if (std.mem.eql(u8, trimmed, "[search]")) {
-                    std.debug.print("Starting to parse search config.\n", .{});
                     config.search = self.parseSearchPart(&line_iter);
                 }
                 continue;
@@ -121,6 +120,35 @@ pub const ConfigParser = struct {
                 if (std.mem.eql(u8, key, "engine-path")) {
                     sear_config.search_engine = std.mem.trim(u8, owned_value, &.{'"'});
                 }
+                if (std.mem.eql(u8, key, "engines")) {
+                    const list_line = std.mem.trim(u8, value, &.{ '[', ']', ' ', '\t' });
+                    var list_iter = std.mem.tokenizeSequence(u8, list_line, "},");
+                    var engine_list: std.ArrayList(config_mod.SearchEngine) = .empty;
+                    while (list_iter.next()) |raw_list_item| {
+                        var engine = config_mod.SearchEngine.default();
+
+                        const list_item = std.mem.trim(u8, raw_list_item, &.{ '{', '}', ' ', '\t', ',' });
+                        var data_iter = std.mem.tokenizeScalar(u8, list_item, ',');
+
+                        while (data_iter.next()) |raw_data| {
+                            if (std.mem.indexOfScalar(u8, raw_data, '=')) |data_eq| {
+                                const item_key = std.mem.trim(u8, raw_data[0..data_eq], &.{ ' ', '\t' });
+                                const item_value = std.mem.trim(u8, raw_data[data_eq + 1 ..], &.{ ' ', '\t' });
+                                if (std.mem.eql(u8, item_key, "name")) {
+                                    const owned_item_value = long_alloc.dupe(u8, item_value) catch continue;
+                                    engine.name = std.mem.trim(u8, owned_item_value, &.{ '"', ' ', '\t' });
+                                } else if (std.mem.eql(u8, item_key, "path")) {
+                                    const owned_item_value = long_alloc.dupe(u8, item_value) catch continue;
+                                    engine.path = std.mem.trim(u8, owned_item_value, &.{ '"', ' ', '\t' });
+                                }
+                            }
+                        }
+                        if (engine.name.len == 0 or engine.path.len == 0) continue;
+                        engine_list.append(long_alloc, engine) catch continue;
+                    }
+                    const owned_engines = engine_list.toOwnedSlice(long_alloc) catch continue;
+                    sear_config.engines = owned_engines;
+                }
             }
 
             if (nextSectionStarts(line_iter)) break;
@@ -145,6 +173,8 @@ pub const ConfigParser = struct {
 test "parseConfigContent handles section transition after blank lines" {
     var parser = ConfigParser.init(std.testing.allocator);
     defer parser.deinit();
+    var short_arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer short_arena.deinit();
 
     const config = parser.parseConfigContent(
         \\[location]
@@ -153,9 +183,31 @@ test "parseConfigContent handles section transition after blank lines" {
         \\
         \\[search]
         \\engine-path = "https://search.magmaservices.de?q={s}"
+        \\engines = [ { name = "github", path = "https://github.com/search?q={s}" } ]
+        ,
+        short_arena.allocator()
     );
 
     try std.testing.expectEqualStrings("de", config.loc.lang);
     try std.testing.expectEqualStrings("Berlin", config.loc.city.?);
     try std.testing.expectEqualStrings("https://search.magmaservices.de?q={s}", config.search.search_engine);
+    try std.testing.expectEqual(@as(usize, 1), config.search.engines.len);
+    try std.testing.expectEqualStrings("github", config.search.engines[0].name);
+    try std.testing.expectEqualStrings("https://github.com/search?q={s}", config.search.engines[0].path);
+}
+
+test "parseConfigContent ignores incomplete search engines" {
+    var parser = ConfigParser.init(std.testing.allocator);
+    defer parser.deinit();
+    var short_arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer short_arena.deinit();
+
+    const config = parser.parseConfigContent(
+        \\[search]
+        \\engines = [ { name = "github" }, { path = "https://duckduckgo.com/?q={s}" } ]
+        ,
+        short_arena.allocator()
+    );
+
+    try std.testing.expectEqual(@as(usize, 0), config.search.engines.len);
 }

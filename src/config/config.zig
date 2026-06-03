@@ -34,10 +34,24 @@ pub const Location = struct {
 
 pub const Search = struct {
     search_engine: []const u8,
+    engines: []const SearchEngine,
 
     pub fn default() Search {
        return .{
            .search_engine = "https://www.google.com/search?q={s}",
+           .engines = &.{},
        }; 
+    }
+};
+
+pub const SearchEngine = struct {
+    name: []const u8,
+    path: []const u8,
+
+    pub fn default() SearchEngine {
+        return .{
+            .name = "",
+            .path = "",
+        };
     }
 };

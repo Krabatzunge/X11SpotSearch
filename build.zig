@@ -17,38 +17,7 @@ pub fn build(b: *std.Build) void {
     const enable_x11 = b.option(bool, "x11", "Enable X11 backend") orelse true;
     const enable_wayland = b.option(bool, "wayland", "Enable Wayland backend") orelse true;
 
-    // X11 Libraries
-    if (enable_x11) {
-        exe.linkSystemLibrary("xcb");
-        exe.linkSystemLibrary("xcb-icccm");
-        exe.linkSystemLibrary("xcb-ewmh");
-        exe.linkSystemLibrary("xcb-xkb");
-        exe.linkSystemLibrary("xkbcommon");
-        exe.linkSystemLibrary("xkbcommon-x11");
-    }
-
-    // Wayland libraries
-    if (enable_wayland) {
-        exe.linkSystemLibrary("wayland-client");
-
-        exe.addSystemIncludePath(b.path("src/wayland/generated"));
-        exe.addCSourceFile(.{
-            .file = b.path("src/wayland/generated/wlr-layer-shell-unstable-v1-client-protocol.c"),
-            .flags = &.{"-I", "src/wayland/generated"},
-        });
-        exe.addCSourceFile(.{
-            .file = b.path("src/wayland/generated/xdg-shell-client-protocol.c"),
-            .flags = &.{"-I", "src/wayland/generated"},
-        });
-    }
-
-    // Shared libraries
-    exe.linkSystemLibrary("xkbcommon");
-    exe.linkSystemLibrary("cairo");
-    exe.linkSystemLibrary("pangocairo");
-    exe.linkSystemLibrary("librsvg-2.0");
-    exe.linkSystemLibrary("curl");
-    exe.linkLibC();
+    configureArtifact(exe, b, enable_x11, enable_wayland);
 
     const options = b.addOptions();
     options.addOption(bool, "enable_x11", enable_x11);
@@ -69,11 +38,55 @@ pub fn build(b: *std.Build) void {
     }
 
     const exe_tests = b.addTest(.{
-        .root_module = exe.root_module,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tests.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{},
+        }),
     });
+    configureArtifact(exe_tests, b, enable_x11, enable_wayland);
+    exe_tests.root_module.addOptions("build_options", options);
 
     const run_exe_tests = b.addRunArtifact(exe_tests);
 
     const test_step = b.step("test", "Run tests");
     test_step.dependOn(&run_exe_tests.step);
+}
+
+fn configureArtifact(
+    artifact: *std.Build.Step.Compile,
+    b: *std.Build,
+    enable_x11: bool,
+    enable_wayland: bool,
+) void {
+    if (enable_x11) {
+        artifact.linkSystemLibrary("xcb");
+        artifact.linkSystemLibrary("xcb-icccm");
+        artifact.linkSystemLibrary("xcb-ewmh");
+        artifact.linkSystemLibrary("xcb-xkb");
+        artifact.linkSystemLibrary("xkbcommon");
+        artifact.linkSystemLibrary("xkbcommon-x11");
+    }
+
+    if (enable_wayland) {
+        artifact.linkSystemLibrary("wayland-client");
+
+        artifact.addSystemIncludePath(b.path("src/wayland/generated"));
+        artifact.addCSourceFile(.{
+            .file = b.path("src/wayland/generated/wlr-layer-shell-unstable-v1-client-protocol.c"),
+            .flags = &.{"-I", "src/wayland/generated"},
+        });
+        artifact.addCSourceFile(.{
+            .file = b.path("src/wayland/generated/xdg-shell-client-protocol.c"),
+            .flags = &.{"-I", "src/wayland/generated"},
+        });
+    }
+
+    artifact.linkSystemLibrary("xkbcommon");
+    artifact.linkSystemLibrary("cairo");
+    artifact.linkSystemLibrary("pangocairo");
+    artifact.linkSystemLibrary("librsvg-2.0");
+    artifact.linkSystemLibrary("curl");
+    artifact.linkLibC();
 }

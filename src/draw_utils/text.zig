@@ -1,6 +1,20 @@
 const c = @import("../c.zig").c;
 const Color = @import("../colors.zig").Color;
 
+pub const TextRole = enum {
+    chip,
+    searchItemTitle,
+    searchItemDesc,
+};
+
+pub fn roleToFont(role: TextRole) []const u8 {
+    switch (role) {
+        .chip => return "Inter, DejaVu Sans, Liberation Sans, Noto Sans, Arial, Helvetica, Sans 16",
+        .searchItemTitle => return "Inter, DejaVu Sans, Liberation Sans, Noto Sans, Arial, Helvetica, Sans 18",
+        .searchItemDesc => return "Inter, DejaVu Sans, Liberation Sans, Noto Sans, Arial, Helvetica, Sans 12",
+    }
+}
+
 pub const TextSize = struct { w: i32, h: i32 };
 
 /// Returns the rendered dimensions of text without drawing it.

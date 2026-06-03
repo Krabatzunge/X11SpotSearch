@@ -1,3 +1,5 @@
+const std = @import("std");
+
 pub const Color = struct {
     r: f64,
     g: f64,
@@ -17,6 +19,14 @@ pub const Color = struct {
             .g = @as(f64, g) / 255.0,
             .b = @as(f64, b) / 255.0,
         };
+    }
+
+    pub fn hex(chex: []const u8) Color {
+        const raw = if (std.mem.startsWith(u8, chex, "#")) std.mem.trimStart(u8, chex, "#") else chex;
+        const r = @as(f64, @floatFromInt(std.fmt.parseInt(u8, raw[0..2], "hex"))) / 255.0;
+        const g = @as(f64, @floatFromInt(std.fmt.parseInt(u8, raw[2..4], "hex"))) / 255.0;
+        const b = @as(f64, @floatFromInt(std.fmt.parseInt(u8, raw[4..6], "hex"))) / 255.0;
+        return .{ .r = r, .g = g, .b = b};
     }
 };
 

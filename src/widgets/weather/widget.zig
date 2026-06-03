@@ -10,8 +10,7 @@ const network = @import("../../network.zig");
 const Location = @import("../../config/config.zig").Location;
 const weather_extract = @import("../../network/parsers/weather.zig");
 const Icons = @import("../../assets.zig").Icons;
-
-const fg = colors.fg;
+const cattpuccin = @import("../../themes/cattpuccin.zig");
 
 pub const WeatherWidget = struct {
     weather: ?Weather,
@@ -55,7 +54,7 @@ pub const WeatherWidget = struct {
         const icon_y: f64 = y + (constants.WIDGET_HEIGHT - icon_size) / 2.0;
 
         const weather_code = if (self.weather) |weather| weather.current.weather_code else 0;
-        const weather_icon = render_ctx.icon_mod.loadEmbeddedIcon(Weather.iconFromWeatherCode(weather_code), colors.fg, icon_size);
+        const weather_icon = render_ctx.icon_mod.loadEmbeddedIcon(Weather.iconFromWeatherCode(weather_code), cattpuccin.text, icon_size);
         if (weather_icon) |icon| {
             c.cairo_set_source_surface(cr, icon, icon_x, icon_y);
             c.cairo_paint(cr);
@@ -66,12 +65,12 @@ pub const WeatherWidget = struct {
         const temp_txt = if (self.weather) |weather| std.fmt.bufPrint(&temp_buf, "{d} {s}", .{ weather.current.temperature, weather.units.temperature }) catch "--" else "--";
         const text_size = draw_text.measureText(cr, temp_txt, render_ctx.font_desc_small_str);
         const text_y = y + (constants.WIDGET_HEIGHT - @as(f64, @floatFromInt(text_size.h))) / 2.0;
-        const text_width = draw_text.drawTextMeasured(cr, temp_txt, render_ctx.font_desc_small_str, colors.fg, text_x, text_y).w;
+        const text_width = draw_text.drawTextMeasured(cr, temp_txt, render_ctx.font_desc_small_str, cattpuccin.subtext1, text_x, text_y).w;
 
         const wind_size = 22.0;
         const wind_y: f64 = y + (constants.WIDGET_HEIGHT - wind_size) / 2.0;
         const wind_x = text_x + @as(f64, @floatFromInt(text_width)) + 16.0;
-        const wind_icon = render_ctx.icon_mod.loadEmbeddedIcon(Icons.WeatherWind, colors.placeholder, wind_size);
+        const wind_icon = render_ctx.icon_mod.loadEmbeddedIcon(Icons.WeatherWind, cattpuccin.subtext1, wind_size);
         if (wind_icon) |icon| {
             c.cairo_set_source_surface(cr, icon, wind_x, wind_y);
             c.cairo_paint(cr);
@@ -82,7 +81,7 @@ pub const WeatherWidget = struct {
         const wind_txt = if (self.weather) |weather| std.fmt.bufPrint(&wind_buf, "{d} {s}", .{ weather.current.wind_speed, weather.units.wind_speed }) catch "--" else "--";
         const wind_txt_size = draw_text.measureText(cr, wind_txt, render_ctx.font_desc_small_str);
         const wind_txt_y = y + (constants.WIDGET_HEIGHT - @as(f64, @floatFromInt(wind_txt_size.h))) / 2.0;
-        draw_text.drawText(cr, wind_txt, render_ctx.font_desc_small_str, colors.placeholder, w_text_x, wind_txt_y);
+        draw_text.drawText(cr, wind_txt, render_ctx.font_desc_small_str, cattpuccin.subtext0, w_text_x, wind_txt_y);
     }
 
     fn extract_weather(self: *WeatherWidget) void {

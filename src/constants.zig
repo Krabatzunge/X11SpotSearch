@@ -6,11 +6,12 @@ pub const APP_NAME = "spot-sear";
 pub const WIN_WIDTH: u16 = 600;
 //const WIN_HEIGHT: u16 = 60;
 pub const SEARCH_BAR_HEIGHT: f64 = 60.0;
+pub const SEPERATOR_PADDING: f64 = 4.0;
 pub const RESULT_ITEM_HEIGHT: f64 = 56.0;
 pub const WIDGET_HEIGHT: f64 = 60.0;
 pub const MAX_RESULTS: usize = 5;
 
-pub const ICON_SIZE: u16 = 32;
+pub const ICON_SIZE: u16 = 30;
 
 pub const CURSOR_BLINK_MS: u32 = 500;
 pub const FRAME_MS: u32 = 16;

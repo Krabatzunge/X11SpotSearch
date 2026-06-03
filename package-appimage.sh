@@ -7,10 +7,19 @@ APPDIR="${APP_NAME}.AppDir"
 APPIMAGETOOL="appimagetool-${ARCH}.AppImage"
 APPIMAGETOOL_URL="https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-${ARCH}.AppImage"
 
+make_user_writable() {
+  local path="$1"
+
+  if [ -e "${path}" ]; then
+    chmod -R u+w "${path}"
+  fi
+}
+
 echo "=== Building ${APP_NAME} ==="
 zig build -Doptimize=ReleaseFast
 
 echo "=== Creating AppDir structure ==="
+make_user_writable "${APPDIR}"
 rm -rf "${APPDIR}"
 mkdir -p "${APPDIR}/usr/bin"
 mkdir -p "${APPDIR}/usr/lib"
@@ -84,6 +93,7 @@ fi
 if [ -n "${PANGO_LIB_DIR}" ]; then
   echo "  Bundling Pango modules from ${PANGO_LIB_DIR}"
   cp -rL "${PANGO_LIB_DIR}" "${APPDIR}/usr/lib/" 2>/dev/null || true
+  make_user_writable "${APPDIR}/usr/lib/pango"
 fi
 
 # GDK-Pixbuf loaders (if needed):
@@ -104,6 +114,7 @@ fi
 if [ -n "${GDK_PIXBUF_DIR}" ]; then
   echo "  Bundling GDK-Pixbuf loaders from ${GDK_PIXBUF_DIR}"
   cp -rL "${GDK_PIXBUF_DIR}" "${APPDIR}/usr/lib/" 2>/dev/null || true
+  make_user_writable "${APPDIR}/usr/lib/gdk-pixbuf-2.0"
 fi
 
 echo "=== Creating AppRun ==="

@@ -12,6 +12,7 @@
   - [ ] hotkey
   - [ ] max results
   - [x] Location
+  - [x] Search
 - [ ] **Widgets**: Use "$" to search for widgets -> widgets can also appear in normal search as attachment after the last result item
   - [x] Time Widget
   - [x] Math Widget
@@ -19,7 +20,7 @@
     - [ ] When pressing enter on math widget, copy equation result into clipboard
   - [x] Weather
     - [ ] Parse text after "weather" and use it as city entry for weather lookup at non default places
-    - [ ] Currently can not load weather when widget gets loaded before location resolving is completed
+    - [x] Currently can not load weather when widget gets loaded before location resolving is completed
   - [x] Date
   - [ ] Converter
 - [x] **Specify search**: \#name for only searching with names, \#category for categories, etc.

@@ -6,12 +6,14 @@ const Result = @import("result.zig").Result;
 const icon_mod = @import("icons/icon.zig");
 const colors = @import("colors.zig");
 const draw_shapes = @import("draw_utils/shapes.zig");
+const dtypes = @import("draw_utils/types.zig");
 const draw_text = @import("draw_utils/text.zig");
 const RenderContext = @import("draw_utils/context.zig").RenderContext;
 const result_item = @import("widgets/result_item.zig");
 const Widget = @import("widgets/widget_struct.zig").Widget;
 const SearchTag = @import("search.zig").SearchTag;
 const Icons = @import("assets.zig").Icons;
+const cattpuccin = @import("themes/cattpuccin.zig");
 
 const Color = colors.Color;
 
@@ -70,9 +72,10 @@ pub const Renderer = struct {
         c.cairo_paint(cr);
         c.cairo_set_operator(cr, c.CAIRO_OPERATOR_OVER);
 
-        draw_shapes.roundedRect(cr, 0.0, 0.0, @as(f64, @floatFromInt(width)), @as(f64, @floatFromInt(height)), draw_shapes.Rounding.all(8.0));
-        c.cairo_set_source_rgb(cr, bg.r, bg.g, bg.b);
-        c.cairo_fill(cr);
+        //draw_shapes.roundedRect(cr, 0.0, 0.0, @as(f64, @floatFromInt(width)), @as(f64, @floatFromInt(height)), draw_shapes.Rounding.all(8.0));
+        //c.cairo_set_source_rgb(cr, bg.r, bg.g, bg.b);
+        //c.cairo_fill(cr);
+        self.drawRectangle(0.0, 0.0, @as(f64, @floatFromInt(width)), @as(f64, @floatFromInt(height)), cattpuccin.base, dtypes.Rounding.all(16.0), dtypes.Border.all(1.5, cattpuccin.overlay1, dtypes.Rounding.all(16.0), dtypes.BorderType.Inner));
 
         const margin: f64 = 6.0;
         const bar_x = margin;
@@ -80,10 +83,12 @@ pub const Renderer = struct {
         const bar_w = @as(f64, @floatFromInt(width)) - margin * 2.0;
         const bar_h = constants.SEARCH_BAR_HEIGHT - margin * 2.0;
         const radius: f64 = 10.0;
+        _ = bar_w;
+        _ = radius;
 
-        draw_shapes.roundedRect(cr, bar_x, bar_y, bar_w, bar_h, draw_shapes.Rounding.all(radius));
-        c.cairo_set_source_rgb(cr, container_bg.r, container_bg.g, container_bg.b);
-        c.cairo_fill(cr);
+        //draw_shapes.roundedRect(cr, bar_x, bar_y, bar_w, bar_h, dtypes.Rounding.all(radius));
+        //c.cairo_set_source_rgb(cr, container_bg.r, container_bg.g, container_bg.b);
+        //c.cairo_fill(cr);
 
         var search_chip_width: f64 = 0;
 
@@ -92,9 +97,9 @@ pub const Renderer = struct {
             const chip_x = bar_x + search_chip_margin;
             const chip_y = bar_y + search_chip_margin;
 
-            const c_padding: f64 = 4.0;
+            const c_padding: f64 = 8.0;
             const display_text = @tagName(search_tag);
-            const txt_size = draw_text.measureText(cr, display_text, font_desc_str);
+            const txt_size = draw_text.measureText(cr, display_text, RenderContext.font(.chip));
 
             search_chip_width = c_padding * 2 + @as(f64, @floatFromInt(txt_size.w));
             const c_height = bar_h - search_chip_margin * 2;
@@ -102,11 +107,12 @@ pub const Renderer = struct {
             const text_x = chip_x + c_padding;
             const text_y = chip_y + (c_height - @as(f64, @floatFromInt(txt_size.h))) / 2.0;
 
-            draw_shapes.roundedRect(cr, chip_x, chip_y, search_chip_width, c_height, draw_shapes.Rounding.all(8.0));
-            c.cairo_set_source_rgb(cr, bg.r, bg.g, bg.b);
-            c.cairo_fill(cr);
+            //draw_shapes.roundedRect(cr, chip_x, chip_y, search_chip_width, c_height, dtypes.Rounding.all(8.0));
+            //c.cairo_set_source_rgb(cr, bg.r, bg.g, bg.b);
+            //c.cairo_fill(cr);
+            self.drawRectangle(chip_x, chip_y, search_chip_width, c_height, cattpuccin.surface0, dtypes.Rounding.all(12.0), dtypes.Border.all(1.5, cattpuccin.overlay0, dtypes.Rounding.all(12.0), dtypes.BorderType.Inner));
 
-            draw_text.drawText(cr, display_text, font_desc_str, fg, text_x, text_y);
+            draw_text.drawText(cr, display_text, RenderContext.font(.chip), fg, text_x, text_y);
         }
 
         // Text input field
@@ -121,12 +127,10 @@ pub const Renderer = struct {
 
             if (cursor_visible) {
                 const cursor_w = if (search_text.len == 0) -2 else text_w;
-                c.cairo_set_source_rgb(cr, fg.r, fg.g, fg.b);
                 const cursor_x = text_x + @as(f64, @floatFromInt(cursor_w)) + 2.0;
                 const cursor_y = bar_y + 10.0;
                 const cursor_h = bar_h - 20.0;
-                c.cairo_rectangle(cr, cursor_x, cursor_y, 2.0, cursor_h);
-                c.cairo_fill(cr);
+                self.drawRectangle(cursor_x, cursor_y, 2.0, cursor_h, fg, dtypes.Rounding.all(2.0), dtypes.Border.None);
             }
         }
 
@@ -141,14 +145,14 @@ pub const Renderer = struct {
         // Result list
         if (results.len > 0) {
             // Seperator line
-            c.cairo_set_source_rgb(cr, selected_bg.r, selected_bg.g, selected_bg.b);
-            c.cairo_rectangle(cr, 12.0, constants.SEARCH_BAR_HEIGHT - 1.0, @as(f64, constants.WIN_WIDTH) - 24.0, 1.0);
+            c.cairo_set_source_rgb(cr, cattpuccin.overlay1.r, cattpuccin.overlay1.g, cattpuccin.overlay1.b);
+            c.cairo_rectangle(cr, 0.0, constants.SEARCH_BAR_HEIGHT - 1.0, @as(f64, constants.WIN_WIDTH) - 0.0, 1.5);
             c.cairo_fill(cr);
 
             //const default_icon = icons.loadEmbeddedIcon(Icons.DefaultApplication, colors.fg, constants.ICON_SIZE);
             for (results, 0..) |result, i| {
                 const iy: f64 = @floatFromInt(i);
-                const item_y = constants.SEARCH_BAR_HEIGHT + iy * constants.RESULT_ITEM_HEIGHT;
+                const item_y = constants.SEARCH_BAR_HEIGHT + constants.SEPERATOR_PADDING + iy * constants.RESULT_ITEM_HEIGHT;
                 //const des_entry_icon = icons.loadDesktopIcon(result.icon_name, constants.ICON_SIZE);
                 //const res_icon = des_entry_icon orelse default_icon;
                 const res_icon = icons.loadIcon(result.icon, constants.ICON_SIZE, colors.fg);
@@ -159,11 +163,11 @@ pub const Renderer = struct {
         // Widget
         if (widget) |w| {
             const results_f: f64 = @floatFromInt(results.len);
-            const widget_sep_y = constants.SEARCH_BAR_HEIGHT + results_f * constants.RESULT_ITEM_HEIGHT;
+            const widget_sep_y = constants.SEARCH_BAR_HEIGHT + results_f * constants.RESULT_ITEM_HEIGHT + constants.SEPERATOR_PADDING * 2;
 
             // Seperator line
-            c.cairo_set_source_rgb(cr, selected_bg.r, selected_bg.g, selected_bg.b);
-            c.cairo_rectangle(cr, 12.0, widget_sep_y, @as(f64, constants.WIN_WIDTH) - 24.0, 1.0);
+            c.cairo_set_source_rgb(cr, cattpuccin.overlay1.r, cattpuccin.overlay1.g, cattpuccin.overlay1.b);
+            c.cairo_rectangle(cr, 0.0, widget_sep_y, @as(f64, constants.WIN_WIDTH) - 0.0, 1.5);
             c.cairo_fill(cr);
 
             w.draw(w.ctx, ctx, widget_sep_y + 1.0, search_text);
@@ -183,5 +187,42 @@ pub const Renderer = struct {
         _ = c.xcb_configure_window(conn, win, c.XCB_CONFIG_WINDOW_HEIGHT, &values);
         // c.cairo_xcb_surface_set_size(self.back_surface, self.width, @intCast(new_height));
         self.height = @intCast(new_height);
+    }
+
+    // Render function
+    pub fn drawRectangle(self: *Renderer, x: f64, y: f64, w: f64, h: f64, col: Color, r: dtypes.Rounding, b: dtypes.Border) void {
+        draw_shapes.roundedRect(self.back_cr, x, y, w, h, r);
+        c.cairo_set_source_rgb(self.back_cr, col.r, col.g, col.b);
+        c.cairo_fill(self.back_cr);
+
+        if (b.btype != .None) {
+            const bw_f = b.width;
+            const off: f64 = switch (b.btype) {
+                .Inner => bw_f / 2.0,
+                .Outer => -bw_f / 2.0,
+                .None => 0.0,
+            };
+
+            const bx = x + off;
+            const by = y + off;
+            const bw = @max(w - off * 2.0, 0);
+            const bh = @max(h - off * 2.0, 0);
+
+            const rounding = adjustRounding(b.rounding, -off);
+
+            draw_shapes.roundedRect(self.back_cr, bx, by, bw, bh, rounding);
+            c.cairo_set_source_rgb(self.back_cr, b.color.r, b.color.g, b.color.b);
+            c.cairo_set_line_width(self.back_cr, bw_f);
+            c.cairo_stroke(self.back_cr);
+        }
+    }
+
+    fn adjustRounding(rounding: dtypes.Rounding, delta: f64) dtypes.Rounding {
+        return .{
+            .top_left = @max(rounding.top_left + delta, 0),
+            .top_right = @max(rounding.top_right + delta, 0),
+            .bottom_left = @max(rounding.bottom_left + delta, 0),
+            .bottom_right = @max(rounding.bottom_right + delta, 0),
+        };
     }
 };
