@@ -1,5 +1,10 @@
 const Color = @import("../colors.zig").Color;
 
+pub const Position = struct {
+    x: f64,
+    y: f64,
+};
+
 pub const Rounding = struct {
     top_left: f64,
     top_right: f64,

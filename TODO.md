@@ -43,6 +43,8 @@
 - [x] **Improve performance** by offloading either rendering or desktop file loading into other thread
 - [x] Improve performance by offloading image loading into other thread making deferred loading to keep real time search up on slower systems
 - [x] Store paths from name -> path resolution in file in ~/.cache/spot-sear in order to prevent reresolution on every opening to improve icon loading delay
+- [ ] Cache web requests
+- [ ] make deamon mode not init a new runtime everytime
 
 ## Fixes
 
@@ -50,3 +52,4 @@
 - [x] **Still glitchy even with compositor**
 - [x] **Fix Modifier Key duration**: Modifier keys like shift apply to long in the textinput still impacting up to two keys after modifier key release when typing faster
 - [ ] **Fast typing render issue**: When fast typing (example word "date"). The last character isn't rendered until another keyboard even like arrow left is fired even though the rendering (like the cursor) is perfectly working -> problem with X11 input
+- [ ] When closing before all icon finished resolving -> cash save triggers runtime error as icon name, path, etc are already deinit -> dangling pointer issue

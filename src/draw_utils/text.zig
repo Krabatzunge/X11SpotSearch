@@ -5,6 +5,7 @@ pub const TextRole = enum {
     chip,
     searchItemTitle,
     searchItemDesc,
+    input,
 };
 
 pub fn roleToFont(role: TextRole) []const u8 {
@@ -12,6 +13,7 @@ pub fn roleToFont(role: TextRole) []const u8 {
         .chip => return "Inter, DejaVu Sans, Liberation Sans, Noto Sans, Arial, Helvetica, Sans 16",
         .searchItemTitle => return "Inter, DejaVu Sans, Liberation Sans, Noto Sans, Arial, Helvetica, Sans 18",
         .searchItemDesc => return "Inter, DejaVu Sans, Liberation Sans, Noto Sans, Arial, Helvetica, Sans 12",
+        .input => return "Inter, DejaVu Sans, Liberation Sans, Noto Sans, Arial, Helvetica, Sans 20",
     }
 }
 

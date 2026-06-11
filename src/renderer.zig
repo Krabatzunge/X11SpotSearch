@@ -22,6 +22,7 @@ pub const Renderer = struct {
     back_cr: *c.cairo_t,
     width: u16,
     height: u16,
+    iconMod: *icon_mod.IconModule,
 
     const bg = colors.bg;
     const container_bg = colors.container_bg;
@@ -37,7 +38,7 @@ pub const Renderer = struct {
     pub const icon_padding: f64 = 8.0;
     pub const text_left: f64 = padding + @as(f64, @floatFromInt(constants.ICON_SIZE)) + icon_padding;
 
-    pub fn init(width: u16, height: u16) !Renderer {
+    pub fn init(width: u16, height: u16, iconMod: *icon_mod.IconModule) !Renderer {
         const max_height: c_int = @intCast(utils.calcHeight(constants.MAX_RESULTS, true));
 
         const back_surface = c.cairo_image_surface_create(c.CAIRO_FORMAT_ARGB32, width, max_height) orelse return error.CairoSurfaceFailed;
@@ -49,7 +50,7 @@ pub const Renderer = struct {
         c.cairo_font_options_set_antialias(font_opts, c.CAIRO_ANTIALIAS_SUBPIXEL);
         c.cairo_set_font_options(back_cr, font_opts);
 
-        return .{ .width = width, .height = height, .back_surface = back_surface, .back_cr = back_cr };
+        return .{ .width = width, .height = height, .back_surface = back_surface, .back_cr = back_cr, .iconMod = iconMod };
     }
 
     pub fn deinit(self: *Renderer) void {
@@ -57,135 +58,25 @@ pub const Renderer = struct {
         c.cairo_surface_destroy(self.back_surface);
     }
 
-    pub fn draw(self: *Renderer, target_cr: ?*c.cairo_t, search_text: []const u8, search_tag: SearchTag, results: []const Result, icons: *icon_mod.IconModule, cursor_visible: bool, widget: ?Widget) void {
-        const cr = self.back_cr;
-        const width = self.width;
-        const height = self.height;
-
-        const render_tag_chip = search_tag != SearchTag.Unspecified;
-
-        //c.cairo_set_source_rgb(cr, bg.r, bg.g, bg.b);
-        //c.cairo_paint(cr);
-
-        c.cairo_set_operator(cr, c.CAIRO_OPERATOR_SOURCE);
-        c.cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, 0.0);
-        c.cairo_paint(cr);
-        c.cairo_set_operator(cr, c.CAIRO_OPERATOR_OVER);
-
-        //draw_shapes.roundedRect(cr, 0.0, 0.0, @as(f64, @floatFromInt(width)), @as(f64, @floatFromInt(height)), draw_shapes.Rounding.all(8.0));
-        //c.cairo_set_source_rgb(cr, bg.r, bg.g, bg.b);
-        //c.cairo_fill(cr);
-        self.drawRectangle(0.0, 0.0, @as(f64, @floatFromInt(width)), @as(f64, @floatFromInt(height)), cattpuccin.base, dtypes.Rounding.all(16.0), dtypes.Border.all(1.5, cattpuccin.overlay1, dtypes.Rounding.all(16.0), dtypes.BorderType.Inner));
-
-        const margin: f64 = 6.0;
-        const bar_x = margin;
-        const bar_y = margin;
-        const bar_w = @as(f64, @floatFromInt(width)) - margin * 2.0;
-        const bar_h = constants.SEARCH_BAR_HEIGHT - margin * 2.0;
-        const radius: f64 = 10.0;
-        _ = bar_w;
-        _ = radius;
-
-        //draw_shapes.roundedRect(cr, bar_x, bar_y, bar_w, bar_h, dtypes.Rounding.all(radius));
-        //c.cairo_set_source_rgb(cr, container_bg.r, container_bg.g, container_bg.b);
-        //c.cairo_fill(cr);
-
-        var search_chip_width: f64 = 0;
-
-        // SeachTag Chip
-        if (render_tag_chip) {
-            const chip_x = bar_x + search_chip_margin;
-            const chip_y = bar_y + search_chip_margin;
-
-            const c_padding: f64 = 8.0;
-            const display_text = @tagName(search_tag);
-            const txt_size = draw_text.measureText(cr, display_text, RenderContext.font(.chip));
-
-            search_chip_width = c_padding * 2 + @as(f64, @floatFromInt(txt_size.w));
-            const c_height = bar_h - search_chip_margin * 2;
-
-            const text_x = chip_x + c_padding;
-            const text_y = chip_y + (c_height - @as(f64, @floatFromInt(txt_size.h))) / 2.0;
-
-            //draw_shapes.roundedRect(cr, chip_x, chip_y, search_chip_width, c_height, dtypes.Rounding.all(8.0));
-            //c.cairo_set_source_rgb(cr, bg.r, bg.g, bg.b);
-            //c.cairo_fill(cr);
-            self.drawRectangle(chip_x, chip_y, search_chip_width, c_height, cattpuccin.surface0, dtypes.Rounding.all(12.0), dtypes.Border.all(1.5, cattpuccin.overlay0, dtypes.Rounding.all(12.0), dtypes.BorderType.Inner));
-
-            draw_text.drawText(cr, display_text, RenderContext.font(.chip), fg, text_x, text_y);
-        }
-
-        // Text input field
-        {
-            const text_x = bar_x + padding + search_chip_width;
-            const display_text = if (search_text.len == 0) "Search..." else search_text;
-            const display_color = if (search_text.len == 0) placeholder else fg;
-
-            const size = draw_text.measureText(cr, display_text, font_desc_str);
-            const text_y = bar_y + (bar_h - @as(f64, @floatFromInt(size.h))) / 2.0;
-            const text_w = draw_text.drawTextMeasured(cr, display_text, font_desc_str, display_color, text_x, text_y).w;
-
-            if (cursor_visible) {
-                const cursor_w = if (search_text.len == 0) -2 else text_w;
-                const cursor_x = text_x + @as(f64, @floatFromInt(cursor_w)) + 2.0;
-                const cursor_y = bar_y + 10.0;
-                const cursor_h = bar_h - 20.0;
-                self.drawRectangle(cursor_x, cursor_y, 2.0, cursor_h, fg, dtypes.Rounding.all(2.0), dtypes.Border.None);
-            }
-        }
-
-        const ctx = RenderContext{
-            .cr = cr,
-            .font_desc_str = font_desc_str,
-            .font_desc_small_str = font_desc_small_str,
-            .text_left = text_left,
-            .icon_mod = icons,
-        };
-
-        // Result list
-        if (results.len > 0) {
-            // Seperator line
-            c.cairo_set_source_rgb(cr, cattpuccin.overlay1.r, cattpuccin.overlay1.g, cattpuccin.overlay1.b);
-            c.cairo_rectangle(cr, 0.0, constants.SEARCH_BAR_HEIGHT - 1.0, @as(f64, constants.WIN_WIDTH) - 0.0, 1.5);
-            c.cairo_fill(cr);
-
-            //const default_icon = icons.loadEmbeddedIcon(Icons.DefaultApplication, colors.fg, constants.ICON_SIZE);
-            for (results, 0..) |result, i| {
-                const iy: f64 = @floatFromInt(i);
-                const item_y = constants.SEARCH_BAR_HEIGHT + constants.SEPERATOR_PADDING + iy * constants.RESULT_ITEM_HEIGHT;
-                //const des_entry_icon = icons.loadDesktopIcon(result.icon_name, constants.ICON_SIZE);
-                //const res_icon = des_entry_icon orelse default_icon;
-                const res_icon = icons.loadIcon(result.icon, constants.ICON_SIZE, colors.fg);
-                result_item.draw(&result, ctx, item_y, res_icon);
-            }
-        }
-
-        // Widget
-        if (widget) |w| {
-            const results_f: f64 = @floatFromInt(results.len);
-            const widget_sep_y = constants.SEARCH_BAR_HEIGHT + results_f * constants.RESULT_ITEM_HEIGHT + constants.SEPERATOR_PADDING * 2;
-
-            // Seperator line
-            c.cairo_set_source_rgb(cr, cattpuccin.overlay1.r, cattpuccin.overlay1.g, cattpuccin.overlay1.b);
-            c.cairo_rectangle(cr, 0.0, widget_sep_y, @as(f64, constants.WIN_WIDTH) - 0.0, 1.5);
-            c.cairo_fill(cr);
-
-            w.draw(w.ctx, ctx, widget_sep_y + 1.0, search_text);
-        }
-
-        c.cairo_surface_flush(self.back_surface);
-
-        c.cairo_set_operator(target_cr, c.CAIRO_OPERATOR_SOURCE);
-        c.cairo_set_source_surface(target_cr, self.back_surface, 0, 0);
-        c.cairo_paint(target_cr);
-        c.cairo_surface_flush(c.cairo_get_target(target_cr));
+    pub fn beginFrame(self: *Renderer) void {
+        c.cairo_set_operator(self.back_cr, c.CAIRO_OPERATOR_SOURCE);
+        c.cairo_set_source_rgba(self.back_cr, 0.0, 0.0, 0.0, 0.0);
+        c.cairo_paint(self.back_cr);
+        c.cairo_set_operator(self.back_cr, c.CAIRO_OPERATOR_OVER);
     }
 
+    pub fn endFrame(self: *Renderer, targetCr: ?*c.cairo_t) void {
+        c.cairo_surface_flush(self.back_surface);
+        c.cairo_set_operator(targetCr, c.CAIRO_OPERATOR_SOURCE);
+        c.cairo_set_source_surface(targetCr, self.back_surface, 0, 0);
+        c.cairo_paint(targetCr);
+        c.cairo_surface_flush(c.cairo_get_target(targetCr));
+    }
+ 
     pub fn resizeWindow(self: *Renderer, conn: *c.xcb_connection_t, win: u32, result_count: usize, has_widget: bool) void {
         const new_height = utils.calcHeight(result_count, has_widget);
         const values = [_]u32{@as(u32, new_height)};
         _ = c.xcb_configure_window(conn, win, c.XCB_CONFIG_WINDOW_HEIGHT, &values);
-        // c.cairo_xcb_surface_set_size(self.back_surface, self.width, @intCast(new_height));
         self.height = @intCast(new_height);
     }
 
@@ -225,4 +116,35 @@ pub const Renderer = struct {
             .bottom_right = @max(rounding.bottom_right + delta, 0),
         };
     }
+
+    pub fn drawStrokePath(self: *Renderer, width: f64, closePath: bool, color: Color, pos: []const dtypes.Position) void {
+        c.cairo_set_line_width(self.back_cr, width);
+        c.cairo_set_source_rgb(self.back_cr, color.r, color.g, color.b);
+        c.cairo_move_to(self.back_cr, pos[0].x, pos[0].y);
+
+        for (pos[1..]) |p| {
+            c.cairo_line_to(self.back_cr, p.x, p.y);
+        }
+
+        if (closePath) c.cairo_close_path(self.back_cr);
+
+        c.cairo_stroke(self.back_cr);
+    }
+
+    pub fn drawStrokeArc(self: *Renderer, swidth: f64, color: Color, center: dtypes.Position, radius: f64, offset: f64, progress: f64) void {
+        c.cairo_set_line_width(self.back_cr, swidth);
+        c.cairo_set_source_rgb(self.back_cr, color.r, color.g, color.b);
+        c.cairo_arc(self.back_cr, center.x, center.y, radius, offset, progress);
+        c.cairo_stroke(self.back_cr);
+    }
+    
+    pub fn drawText(self: *Renderer, text: []const u8, font: draw_text.TextRole, color: Color, x: f64, y: f64) draw_text.TextSize {
+        return draw_text.drawTextMeasured(self.back_cr, text, draw_text.roleToFont(font), color, x, y);
+    }
+
+    pub fn measureText(self: *Renderer, text: []const u8, font: draw_text.TextRole) draw_text.TextSize {
+        return draw_text.measureText(self.back_cr, text, draw_text.roleToFont(font));
+    }
+
+    // TODO: add draw icon method
 };

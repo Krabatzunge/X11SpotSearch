@@ -32,7 +32,7 @@ pub const WidgetManager = struct {
         };
     }
 
-    pub fn setup(self: *WidgetManager, net: *AsyncCurl, config: config_structs.Config, active_loc: *config_structs.Location) !void {
+    pub fn setup(self: *WidgetManager, net: *AsyncCurl, config: *config_structs.Config, active_loc: *config_structs.Location) !void {
         _ = config;
 
         const alloc = self.arena.allocator();
