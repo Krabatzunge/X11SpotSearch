@@ -62,36 +62,39 @@ pub const Xkb = struct {
 
     pub const KeyResult = struct {
         keysym: c.xkb_keysym_t,
-        text: ?[]const u8, // UTF-8 slice, null if not printable
+        text_len: usize = 0, // 0 if not printable
         buf: [32]u8 = undefined,
+
+        /// UTF-8 text of the key, null if not printable
+        pub fn text(self: *const KeyResult) ?[]const u8 {
+            if (self.text_len == 0) return null;
+            return self.buf[0..self.text_len];
+        }
     };
 
-    pub fn processKeyEvent(self: *Xkb, xcb_keycode: u8) KeyResult {
+    /// Translates a key event using the modifier and layout state carried by the event itself,
+    /// so queued events are not affected by keys pressed or released after them.
+    pub fn processKeyEvent(self: *Xkb, xcb_keycode: u8, core_state: u16) KeyResult {
         const xkb_keycode: u32 = @as(u32, xcb_keycode);
         var result = KeyResult{
             .keysym = c.XKB_KEY_NoSymbol,
-            .text = null,
         };
+
+        const mods: u32 = core_state & 0xFF;
+        const group: u32 = (core_state >> 13) & 0x3;
+        _ = c.xkb_state_update_mask(self.state, mods, 0, 0, 0, 0, group);
 
         result.keysym = c.xkb_state_key_get_one_sym(self.state, xkb_keycode);
 
         const len = c.xkb_state_key_get_utf8(self.state, xkb_keycode, &result.buf, result.buf.len);
 
         if (len > 0 and len < result.buf.len) {
-            result.text = result.buf[0..@intCast(len)];
+            const n: usize = @intCast(len);
+            if (!(n == 1 and std.ascii.isControl(result.buf[0]))) {
+                result.text_len = n;
+            }
         }
 
         return result;
-    }
-
-    pub fn updateState(self: *Xkb, conn: *c.xcb_connection_t) void {
-        const device_id = c.xkb_x11_get_core_keyboard_device_id(conn);
-        if (device_id == -1) return;
-
-        const new_state = c.xkb_x11_state_new_from_device(self.keymap, conn, device_id);
-        if (new_state) |s| {
-            c.xkb_state_unref(self.state);
-            self.state = s;
-        }
     }
 };

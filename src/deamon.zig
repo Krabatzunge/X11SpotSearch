@@ -52,8 +52,8 @@ pub fn runDeamon(conn: *c.xcb_connection_t, root: u32, modifiers: u16, target_ke
             if (event_type == c.XCB_KEY_PRESS) {
                 const key_event: *c.xcb_key_press_event_t = @ptrCast(event);
 
-                // Strip lock key modifiers for comparison
-                const clean_mod = key_event.state & ~@as(u16, 0x02 | 0x10);
+                // Keep only modifier bits (drops button masks and XKB group bits 13-14), then strip lock keys
+                const clean_mod = key_event.state & 0xFF & ~@as(u16, 0x02 | 0x10);
 
                 if (key_event.detail == keycode and clean_mod == modifiers) {
                     std.debug.print("Hotkey triggered!\n", .{});

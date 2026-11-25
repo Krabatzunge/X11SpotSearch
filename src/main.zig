@@ -175,8 +175,13 @@ fn runLauncher(config: Config, conn: *c.xcb_connection_t, screen: *c.xcb_screen_
     var cursor_visible = true;
     var needs_redraw = false;
 
+    // XCB can read events into its internal queue while drawing/flushing. poll() won't report those,
+    // so after drawing we poll without blocking once to drain them.
+    var poll_timeout: c_int = -1;
+
     while (true) {
-        _ = c.poll(&fds, 2, -1);
+        _ = c.poll(&fds, 2, poll_timeout);
+        poll_timeout = -1;
 
         if (loc_req) |req| {
             const loc_res = net.try_value(req) catch |err| blk: {
@@ -207,7 +212,7 @@ fn runLauncher(config: Config, conn: *c.xcb_connection_t, screen: *c.xcb_screen_
             needs_redraw = true;
         }
 
-        if (fds[0].revents & c.POLLIN != 0) {
+        {
             while (c.xcb_poll_for_event(conn)) |event| {
                 defer std.c.free(event);
 
@@ -221,8 +226,7 @@ fn runLauncher(config: Config, conn: *c.xcb_connection_t, screen: *c.xcb_screen_
                     c.XCB_KEY_PRESS => {
                         const key_event: *c.xcb_key_press_event_t = @ptrCast(event);
                         //std.debug.print("Key press: keycode={}.\n", .{key_event.detail});
-                        xkb.updateState(conn);
-                        const result = xkb.processKeyEvent(key_event.detail);
+                        const result = xkb.processKeyEvent(key_event.detail, key_event.state);
                         var search_changed = false;
 
                         switch (result.keysym) {
@@ -266,7 +270,7 @@ fn runLauncher(config: Config, conn: *c.xcb_connection_t, screen: *c.xcb_screen_
                                 std.debug.print("Going down in searches, new selected: {}\n", .{selected});
                             },
                             else => {
-                                if (result.text) |txt| {
+                                if (result.text()) |txt| {
                                     if (search_len + txt.len < search_buf.len) {
                                         @memcpy(search_buf[search_len .. search_len + txt.len], txt);
                                         search_len += txt.len;
@@ -328,6 +332,7 @@ fn runLauncher(config: Config, conn: *c.xcb_connection_t, screen: *c.xcb_screen_
             renderer.draw(cleaned_search_query, search_tag, results_buf[0..results_count], &icons, cursor_visible, widget_manager.active_widget);
             _ = c.xcb_flush(conn);
             needs_redraw = false;
+            poll_timeout = 0;
         }
     }
 }
